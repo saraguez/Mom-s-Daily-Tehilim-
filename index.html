@@ -315,6 +315,18 @@
                 if (window.confirm('Supprimer cet enfant ?')) await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', id));
             };
 
+            // --- Correction du bouton Edit ---
+            const startEdit = (child) => {
+                setFormData(child);
+                setEditingId(child.id);
+                setView('settings'); // Force le changement de vue vers les paramètres
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const sortedChildren = [...children].sort((a, b) => 
+                new Date(b.birthDate) - new Date(a.birthDate)
+            );
+
             // --- RENDER HELPERS ---
 
             if (loadingAuth) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>;
