@@ -16,6 +16,14 @@
         .font-serif { font-family: 'Noto Serif', serif; }
         .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; }
         .tab-inactive { color: #64748b; }
+        /* Animation pour mettre en valeur l'élément modifié */
+        @keyframes highlight {
+            0% { background-color: #dbeafe; }
+            100% { background-color: white; }
+        }
+        .highlight-item {
+            animation: highlight 2s ease-out;
+        }
     </style>
 
     <!-- Import Map -->
@@ -41,7 +49,7 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Settings, Plus, Trash2, Edit2, Save, X, BookOpen, Heart, ArrowLeft, Loader2, Check, CheckCircle, RefreshCw, LogIn, Download, LogOut, Grid, Repeat, Users, ChevronRight } from 'lucide-react';
+        import { Settings, Plus, Trash2, Edit2, Save, X, BookOpen, Heart, ArrowLeft, Loader2, Check, CheckCircle, RefreshCw, LogIn, Download, LogOut, Grid, Repeat, Users, ChevronRight, Undo, Upload } from 'lucide-react';
         import { initializeApp } from 'firebase/app';
         import { 
             getAuth, 
@@ -201,13 +209,14 @@
             // --- SCROLL AUTOMATIQUE AU RETOUR ---
             useEffect(() => {
                 if (view === 'list' && scrollToId) {
-                    // Petit délai pour laisser le temps au DOM de s'afficher
                     setTimeout(() => {
                         const element = document.getElementById(scrollToId);
                         if (element) {
                             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            element.classList.add('highlight-item');
+                            setTimeout(() => element.classList.remove('highlight-item'), 2000);
                         }
-                        setScrollToId(null); // Reset une fois scrollé
+                        setScrollToId(null);
                     }, 150);
                 }
             }, [view, scrollToId]);
@@ -245,7 +254,6 @@
             };
 
             const openReader = async (context) => {
-                // Définir l'ID vers lequel scroller au retour
                 let domId = '';
                 if (context.type === 'child') domId = `child-${context.id}`;
                 else if (context.type === 'chapter') domId = `chapter-${context.id}`;
@@ -269,18 +277,13 @@
                 }
             };
 
-            // Actions Spécifiques Ségoula
             const incrementSegula = async (id) => {
                 if (!user) return;
                 const currentCount = segulaProgress[id] || 0;
-                if (currentCount >= 13) return; // Max atteint
-
+                if (currentCount >= 13) return;
                 const newCount = currentCount + 1;
                 const segulaRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'segula_progress');
-                
-                // Optimistic UI
                 setSegulaProgress(prev => ({...prev, [id]: newCount}));
-                
                 await setDoc(segulaRef, { [id]: newCount }, { merge: true });
             };
 
@@ -291,7 +294,7 @@
                 await setDoc(segulaRef, { [id]: 0 }, { merge: true });
             };
 
-            // Actions Enfants
+            // Gestion de la lecture et annulation
             const markChildAsDone = async (childId) => {
                 if (!user) return;
                 const todayStr = new Date().toDateString();
@@ -301,7 +304,16 @@
                 await setDoc(completedRef, { ids: newIds, date: todayStr }, { merge: true });
             };
 
-            // Gestion de données
+            const unmarkChildAsDone = async (childId) => {
+                if (!user) return;
+                if (!window.confirm("Annuler la lecture pour cet enfant ?")) return;
+                const todayStr = new Date().toDateString();
+                const completedRef = doc(db, 'artifacts', appId, 'users', user.uid, 'completed', todayStr);
+                const newIds = completedIds.filter(id => id !== childId);
+                setCompletedIds(newIds);
+                await setDoc(completedRef, { ids: newIds, date: todayStr }, { merge: true });
+            };
+
             const handleDownloadBackup = () => {
                 const jsonString = JSON.stringify(children, null, 2);
                 const blob = new Blob([jsonString], { type: "application/json" });
@@ -310,6 +322,47 @@
                 link.href = href; link.download = `backup_tehillim.json`;
                 document.body.appendChild(link); link.click();
                 document.body.removeChild(link);
+            };
+
+            // Nouvelle fonction de restauration
+            const handleRestoreBackup = async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                if (!user) {
+                    alert("Connectez-vous d'abord.");
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (!Array.isArray(data)) throw new Error("Format de fichier invalide (doit être une liste)");
+                        
+                        if (!window.confirm(`Restaurer ${data.length} enfants depuis la sauvegarde ? ATTENTION: Cela remplacera votre liste actuelle.`)) return;
+
+                        const batch = writeBatch(db);
+                        const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
+                        
+                        // 1. Supprimer l'existant
+                        const snapshot = await getDocs(childrenRef);
+                        snapshot.forEach(doc => batch.delete(doc.ref));
+
+                        // 2. Ajouter la sauvegarde
+                        data.forEach(child => {
+                            // Nettoyage si des IDs sont présents dans le JSON pour éviter conflits
+                            const { id, ...childData } = child;
+                            const newDocRef = doc(childrenRef);
+                            batch.set(newDocRef, childData);
+                        });
+
+                        await batch.commit();
+                        alert("Restauration réussie !");
+                    } catch (error) {
+                        alert("Erreur lors de la restauration : " + error.message);
+                    }
+                };
+                reader.readAsText(file);
             };
 
             const restoreDefaults = async () => {
@@ -325,23 +378,39 @@
                 } catch (e) { alert("Erreur : " + e.message); }
             };
 
+            // Modification : Fermer et scroller après sauvegarde
             const handleSaveChild = async (e) => {
                 e.preventDefault();
                 if (!user) return;
-                if (editingId) await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', editingId), formData);
-                else await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'children'), formData);
-                setEditingId(null); setFormData({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
+                
+                let targetId = editingId;
+                try {
+                    if (editingId) {
+                        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', editingId), formData);
+                    } else {
+                        const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'children'), formData);
+                        targetId = docRef.id;
+                    }
+                    setEditingId(null); 
+                    setFormData({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
+                    
+                    // Retour à la liste et scroll
+                    setView('list');
+                    setScrollToId(`child-${targetId}`);
+                } catch (error) {
+                    console.error(error);
+                    alert("Erreur lors de l'enregistrement");
+                }
             };
 
             const deleteChild = async (id) => {
                 if (window.confirm('Supprimer cet enfant ?')) await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', id));
             };
 
-            // --- Correction du bouton Edit ---
             const startEdit = (child) => {
                 setFormData(child);
                 setEditingId(child.id);
-                setView('settings'); // Force le changement de vue vers les paramètres
+                setView('settings');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
@@ -394,7 +463,6 @@
                             )}
                         </main>
                         
-                        {/* Footer d'action */}
                         <div className="sticky bottom-0 bg-white border-t p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                             <div className="max-w-md mx-auto">
                                 {readerContext.type === 'child' && (
@@ -427,9 +495,7 @@
             // --- VUE PRINCIPALE (Liste) ---
             return (
                 <div className="min-h-screen bg-slate-50 pb-20 font-sans flex flex-col">
-                    {/* Header Fixe */}
                     <div className="bg-white shadow-sm sticky top-0 z-10">
-                        {/* Top Bar */}
                         <div className="bg-slate-50 py-1 px-4 flex justify-between items-center text-[10px] border-b">
                             <p className="text-slate-500 font-serif font-medium">{todayHebrew}</p>
                             <div className="flex items-center gap-2">
@@ -438,7 +504,6 @@
                             </div>
                         </div>
                         
-                        {/* Titre & Settings */}
                         <div className="px-4 py-3 flex justify-between items-center">
                             <div>
                                 <h1 className="text-lg font-bold text-slate-800 font-serif">אל הנער הזה התפללתי</h1>
@@ -450,7 +515,6 @@
                             </div>
                         </div>
 
-                        {/* Onglets de Navigation */}
                         {view !== 'settings' && (
                             <div className="flex border-b text-sm font-medium">
                                 <button onClick={() => setActiveTab('children')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'children' ? 'tab-active' : 'tab-inactive'}`}>
@@ -484,9 +548,16 @@
                                         </div>
                                     </form>
                                 </div>
-                                <div className="bg-white p-5 rounded-xl border shadow-sm">
-                                    <h2 className="font-bold mb-4 text-slate-800 flex items-center gap-2"><Settings size={18} /> Administration</h2>
+                                <div className="bg-white p-5 rounded-xl border shadow-sm space-y-4">
+                                    <h2 className="font-bold text-slate-800 flex items-center gap-2"><Settings size={18} /> Administration</h2>
                                     <button type="button" onClick={restoreDefaults} className="w-full py-3 bg-red-50 text-red-600 text-sm font-bold border border-red-100 rounded-xl flex items-center justify-center gap-2"><RefreshCw size={16} /> Réinitialiser avec la nouvelle liste complète</button>
+                                    
+                                    <div className="border-t pt-4">
+                                        <input type="file" id="backup-upload" className="hidden" accept=".json" onChange={handleRestoreBackup} />
+                                        <button onClick={() => document.getElementById('backup-upload').click()} className="w-full py-3 bg-slate-100 text-slate-600 text-sm font-bold border rounded-xl flex items-center justify-center gap-2">
+                                            <Upload size={16} /> Restaurer depuis une sauvegarde
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ) : (
@@ -517,9 +588,16 @@
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-2 mt-4">
-                                                        <button onClick={() => openReader({ type: 'child', id: child.id, chapter, data: child })} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${isDone ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-                                                            {isDone ? <RefreshCw size={14} /> : <BookOpen size={14} />} {isDone ? 'Relire' : 'Lire'}
-                                                        </button>
+                                                        <div className="flex-1 flex gap-2">
+                                                            <button onClick={() => openReader({ type: 'child', id: child.id, chapter, data: child })} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${isDone ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                                                                {isDone ? <RefreshCw size={14} /> : <BookOpen size={14} />} {isDone ? 'Relire' : 'Lire'}
+                                                            </button>
+                                                            {isDone && (
+                                                                <button onClick={() => unmarkChildAsDone(child.id)} className="px-3 bg-red-50 text-red-500 rounded-lg border border-red-100 hover:bg-red-100" title="Annuler (marquer comme non lu)">
+                                                                    <Undo size={16} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                         <div className="flex gap-1">
                                                             <button onClick={() => startEdit(child)} className="p-2 bg-white border rounded-lg text-slate-400 hover:text-blue-600"><Edit2 size={16} /></button>
                                                             <button onClick={() => deleteChild(child.id)} className="p-2 bg-white border rounded-lg text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
