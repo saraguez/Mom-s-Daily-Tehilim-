@@ -269,7 +269,10 @@
             };
 
             const restoreDefaults = async () => {
-                if (!user) return;
+                if (!user) {
+                    alert("Connexion à la base de données en cours... Veuillez patienter 2 secondes et réessayer. Si cela persiste, vérifiez votre connexion internet.");
+                    return;
+                }
                 if (!window.confirm("Cela va ajouter toute la liste par défaut. Continuer ?")) return;
 
                 const batch = writeBatch(db);
@@ -280,13 +283,21 @@
                     batch.set(newDocRef, child);
                 });
 
-                await batch.commit();
-                alert("Liste restaurée !");
+                try {
+                    await batch.commit();
+                    alert("Liste restaurée avec succès !");
+                } catch (error) {
+                    console.error("Erreur lors de la restauration:", error);
+                    alert("Erreur lors de la sauvegarde : " + error.message);
+                }
             };
 
             const handleSave = async (e) => {
                 e.preventDefault();
-                if (!user) return;
+                if (!user) {
+                    alert("Vous devez être connecté pour sauvegarder.");
+                    return;
+                }
 
                 try {
                     if (editingId) {
@@ -300,6 +311,7 @@
                     setFormData({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
                 } catch (error) {
                     console.error("Error saving child:", error);
+                    alert("Erreur de sauvegarde: " + error.message);
                 }
             };
 
@@ -577,6 +589,7 @@
                                     
                                     {children.length === 0 && (
                                         <button 
+                                            type="button"
                                             onClick={restoreDefaults}
                                             className="w-full mt-4 bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-200 flex items-center justify-center gap-2"
                                         >
