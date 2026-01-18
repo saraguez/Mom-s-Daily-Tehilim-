@@ -57,7 +57,8 @@
             deleteDoc, 
             onSnapshot, 
             setDoc,
-            writeBatch
+            writeBatch,
+            getDocs
         } from 'firebase/firestore';
 
         // Données initiales pour la restauration
@@ -127,11 +128,11 @@
         function TehillimApp() {
             // --- STATE ---
             const [user, setUser] = useState(null);
-            const [loadingAuth, setLoadingAuth] = useState(true); // État de chargement pour l'auth
+            const [loadingAuth, setLoadingAuth] = useState(true);
             const [children, setChildren] = useState([]);
             const [completedIds, setCompletedIds] = useState([]);
             
-            const [view, setView] = useState('list'); // 'list', 'settings', 'reader'
+            const [view, setView] = useState('list');
             const [readingChild, setReadingChild] = useState(null);
             const [psalmText, setPsalmText] = useState(null);
             const [loadingPsalm, setLoadingPsalm] = useState(false);
@@ -148,13 +149,11 @@
             // --- INITIALIZATION ---
 
             useEffect(() => {
-                // On écoute simplement l'état de l'authentification
                 const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
                     setUser(currentUser);
                     setLoadingAuth(false);
                 });
 
-                // Date Hébraïque
                 try {
                     const date = new Date();
                     const formatter = new Intl.DateTimeFormat('fr-FR-u-ca-hebrew', {
@@ -175,7 +174,6 @@
             useEffect(() => {
                 if (!user) return;
 
-                // A. Listen to Children List
                 const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
                 const unsubscribeChildren = onSnapshot(childrenRef, (snapshot) => {
                     const kids = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -187,7 +185,6 @@
                     }
                 });
 
-                // B. Listen to Completed Status
                 const todayStr = new Date().toDateString();
                 const completedRef = doc(db, 'artifacts', appId, 'users', user.uid, 'completed', todayStr);
                 
@@ -283,24 +280,35 @@
             };
 
             const restoreDefaults = async () => {
-                if (!user) return;
-                if (!window.confirm("Cela va ajouter toute la liste par défaut. Continuer ?")) return;
+                if (!user) {
+                    alert("Veuillez vous connecter d'abord.");
+                    return;
+                }
+                
+                if (!window.confirm("⚠️ ATTENTION : Cela va EFFACER votre liste actuelle et la remplacer par la nouvelle liste complète (avec les derniers ajouts). Voulez-vous continuer ?")) return;
 
                 const batch = writeBatch(db);
                 const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
 
-                INITIAL_DATA.forEach(child => {
-                    const newDocRef = doc(childrenRef);
-                    batch.set(newDocRef, child);
-                });
-
                 try {
+                    // 1. Get all existing documents to delete them
+                    const snapshot = await getDocs(childrenRef);
+                    snapshot.forEach((doc) => {
+                        batch.delete(doc.ref);
+                    });
+
+                    // 2. Add new default data
+                    INITIAL_DATA.forEach(child => {
+                        const newDocRef = doc(childrenRef);
+                        batch.set(newDocRef, child);
+                    });
+
                     await batch.commit();
-                    alert("Liste restaurée avec succès !");
+                    alert("La liste a été mise à jour avec succès !");
                 } catch (error) {
                     console.error("Erreur lors de la restauration:", error);
                     if (error.code === 'permission-denied') {
-                        alert("🔒 ERREUR PERMISSION : Les règles de sécurité Firebase bloquent l'écriture. Allez dans Console Firebase > Firestore Database > Rules et collez les règles fournies.");
+                        alert("🔒 ERREUR PERMISSION : Les règles de sécurité Firebase bloquent l'écriture.");
                     } else {
                         alert("Erreur lors de la sauvegarde : " + error.message);
                     }
@@ -324,7 +332,7 @@
                 } catch (error) {
                     console.error("Error saving child:", error);
                     if (error.code === 'permission-denied') {
-                        alert("🔒 ERREUR PERMISSION : Les règles de sécurité Firebase bloquent l'écriture. Vérifiez l'onglet 'Rules' dans Firestore.");
+                        alert("🔒 ERREUR PERMISSION : Les règles de sécurité Firebase bloquent l'écriture.");
                     } else {
                         alert("Erreur de sauvegarde: " + error.message);
                     }
@@ -641,16 +649,14 @@
                                         </div>
                                     </div>
                                     
-                                    {children.length === 0 && (
-                                        <button 
-                                            type="button"
-                                            onClick={restoreDefaults}
-                                            className="w-full mt-4 bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-200 flex items-center justify-center gap-2"
-                                        >
-                                            <RefreshCw size={16} />
-                                            Restaurer la liste par défaut
-                                        </button>
-                                    )}
+                                    <button 
+                                        type="button"
+                                        onClick={restoreDefaults}
+                                        className="w-full mt-4 bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-200 flex items-center justify-center gap-2"
+                                    >
+                                        <RefreshCw size={16} />
+                                        Réinitialiser avec la nouvelle liste complète
+                                    </button>
                                 </div>
 
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
