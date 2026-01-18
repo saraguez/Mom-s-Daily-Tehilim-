@@ -14,9 +14,11 @@
     <style>
         body { font-family: 'Noto Sans', sans-serif; }
         .font-serif { font-family: 'Noto Serif', serif; }
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; }
+        .tab-inactive { color: #64748b; }
     </style>
 
-    <!-- Import Map pour gérer les bibliothèques sans installation -->
+    <!-- Import Map -->
     <script type="importmap">
     {
         "imports": {
@@ -30,7 +32,7 @@
     }
     </script>
 
-    <!-- Babel pour comprendre le code React -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -39,7 +41,7 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Settings, Plus, Trash2, Edit2, Save, X, BookOpen, Heart, ArrowLeft, Loader2, Check, CheckCircle, RefreshCw, LogIn, Download, LogOut } from 'lucide-react';
+        import { Settings, Plus, Trash2, Edit2, Save, X, BookOpen, Heart, ArrowLeft, Loader2, Check, CheckCircle, RefreshCw, LogIn, Download, LogOut, Grid, Repeat, Users, ChevronRight } from 'lucide-react';
         import { initializeApp } from 'firebase/app';
         import { 
             getAuth, 
@@ -61,9 +63,9 @@
             getDocs
         } from 'firebase/firestore';
 
-        // Données initiales pour la restauration
+        // --- DONNÉES INITIALES ---
         const INITIAL_DATA = [
-            // --- Petits-enfants (Liste originale) ---
+            // --- Petits-enfants ---
             { name: "Sheina bat Aziza Sara", hebrewDate: "8 Tichri", birthDate: "2025-10-01", gender: "girl" },
             { name: "Zvi Ben Preciada Léa", hebrewDate: "5 Tamouz", birthDate: "2025-07-01", gender: "boy" },
             { name: "Yeshua Nahman Ben Haya Moushka", hebrewDate: "19 Adar", birthDate: "2025-03-19", gender: "boy" },
@@ -88,27 +90,27 @@
             { name: "Eythan Yehuda Ben Rina Haya Moushka", hebrewDate: "24 Kislev", birthDate: "2014-12-16", gender: "boy" },
             { name: "Haya Mushka Bat Aziza Sara", hebrewDate: "23 Kislev", birthDate: "2012-12-07", gender: "girl" },
             
-            // --- Nouveaux Ajouts (Enfants/Grands-enfants plus âgés) ---
-            { name: "Élie", hebrewDate: "28 Kislev", birthDate: "2002-12-03", gender: "boy" }, // 23 ans
-            { name: "Ron Baralviski Ben Tamar Noa", hebrewDate: "10 Kislev", birthDate: "2002-11-15", gender: "boy" }, // 23 ans
-            { name: "David Aharon", hebrewDate: "26 Cheshvan", birthDate: "2001-11-12", gender: "boy" }, // 24 ans
-            { name: "Avraham Betsalel", hebrewDate: "14 Tichri", birthDate: "2001-10-01", gender: "boy" }, // 24 ans
-            { name: "Rephael", hebrewDate: "11 Tichrei", birthDate: "1997-10-12", gender: "boy" }, // 28 ans
-            { name: "Preciada Lea bat Batsheva", hebrewDate: "25 Nissan 5755", birthDate: "1995-04-25", gender: "girl" }, // 31 ans
-            { name: "Haya Mouchka bat Batsheva", hebrewDate: "5 Adar 5753", birthDate: "1993-02-26", gender: "girl" }, // 32 ans
-            { name: "Odele", hebrewDate: "1 Tichri", birthDate: "1993-09-16", gender: "girl" }, // 32 ans (Date calc pour l'âge)
-            { name: "Levi Duchman", hebrewDate: "20 Sivan 5752", birthDate: "1992-06-21", gender: "boy" }, // 33 ans
-            { name: "Avraham Ben Batsheva", hebrewDate: "11 Cheshvan 5751", birthDate: "1990-10-30", gender: "boy" }, // 34 ans
-            { name: "Meir Ben Batsheva", hebrewDate: "17 Adar 5750", birthDate: "1990-03-14", gender: "boy" }, // 35 ans
-            { name: "Haya M Hassin", hebrewDate: "1 Av", birthDate: "1990-07-23", gender: "girl" }, // 35 ans
-            { name: "Dvorah Léa bat Hanna", hebrewDate: "25 Tichri 5750", birthDate: "1989-10-24", gender: "girl" }, // 35 ans
-            { name: "Rina", hebrewDate: "7 Tevet", birthDate: "1990-01-04", gender: "girl" }, // 36 ans
-            { name: "Levi Yitschak Ava Ben Batsheva", hebrewDate: "20 Sivan 5749", birthDate: "1989-06-23", gender: "boy" }, // 37 ans
-            { name: "Aziza Sara bat Batsheva", hebrewDate: "1 Shvat 5748", birthDate: "1988-01-20", gender: "girl" }, // 38 ans
-            { name: "Hillel Menahem Ben Atara", hebrewDate: "17 Adar 5746", birthDate: "1986-02-26", gender: "boy" } // 40 ans
+            // --- Nouveaux Ajouts ---
+            { name: "Élie", hebrewDate: "28 Kislev", birthDate: "2002-12-03", gender: "boy" },
+            { name: "Ron Baralviski Ben Tamar Noa", hebrewDate: "10 Kislev", birthDate: "2002-11-15", gender: "boy" },
+            { name: "David Aharon", hebrewDate: "26 Cheshvan", birthDate: "2001-11-12", gender: "boy" },
+            { name: "Avraham Betsalel", hebrewDate: "14 Tichri", birthDate: "2001-10-01", gender: "boy" },
+            { name: "Rephael", hebrewDate: "11 Tichrei", birthDate: "1997-10-12", gender: "boy" },
+            { name: "Preciada Lea bat Batsheva", hebrewDate: "25 Nissan 5755", birthDate: "1995-04-25", gender: "girl" },
+            { name: "Haya Mouchka bat Batsheva", hebrewDate: "5 Adar 5753", birthDate: "1993-02-26", gender: "girl" },
+            { name: "Odele", hebrewDate: "1 Tichri", birthDate: "1993-09-16", gender: "girl" },
+            { name: "Levi Duchman", hebrewDate: "20 Sivan 5752", birthDate: "1992-06-21", gender: "boy" },
+            { name: "Avraham Ben Batsheva", hebrewDate: "11 Cheshvan 5751", birthDate: "1990-10-30", gender: "boy" },
+            { name: "Meir Ben Batsheva", hebrewDate: "17 Adar 5750", birthDate: "1990-03-14", gender: "boy" },
+            { name: "Haya M Hassin", hebrewDate: "1 Av", birthDate: "1990-07-23", gender: "girl" },
+            { name: "Dvorah Léa bat Hanna", hebrewDate: "25 Tichri 5750", birthDate: "1989-10-24", gender: "girl" },
+            { name: "Rina", hebrewDate: "7 Tevet", birthDate: "1990-01-04", gender: "girl" },
+            { name: "Levi Yitschak Ava Ben Batsheva", hebrewDate: "20 Sivan 5749", birthDate: "1989-06-23", gender: "boy" },
+            { name: "Aziza Sara bat Batsheva", hebrewDate: "1 Shvat 5748", birthDate: "1988-01-20", gender: "girl" },
+            { name: "Hillel Menahem Ben Atara", hebrewDate: "17 Adar 5746", birthDate: "1986-02-26", gender: "boy" }
         ];
 
-        // Configuration Firebase
+        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDl6C8AbOgnPkBhqabE3KJGmnJDQ6snXvs",
             authDomain: "mom-s-daily-tehilim.firebaseapp.com",
@@ -121,33 +123,34 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
-        // ID de l'application (fixe pour le web)
         const appId = 'moms-tehillim-app'; 
 
+        // --- COMPOSANT PRINCIPAL ---
         function TehillimApp() {
-            // --- STATE ---
+            // State Auth
             const [user, setUser] = useState(null);
             const [loadingAuth, setLoadingAuth] = useState(true);
-            const [children, setChildren] = useState([]);
-            const [completedIds, setCompletedIds] = useState([]);
             
-            const [view, setView] = useState('list');
-            const [readingChild, setReadingChild] = useState(null);
-            const [psalmText, setPsalmText] = useState(null);
-            const [loadingPsalm, setLoadingPsalm] = useState(false);
+            // State Données
+            const [children, setChildren] = useState([]);
+            const [completedIds, setCompletedIds] = useState([]); // Pour les enfants
+            const [segulaProgress, setSegulaProgress] = useState({}); // { 1: 5, 2: 13 ... } pour les 5 ségoulot
+            
+            // State Navigation & UI
+            const [activeTab, setActiveTab] = useState('children'); // 'children', 'all', 'segula'
+            const [view, setView] = useState('list'); // 'list', 'reader', 'settings'
             const [todayHebrew, setTodayHebrew] = useState("");
             
+            // State Lecteur
+            const [readerContext, setReaderContext] = useState(null); // { type: 'child'|'chapter'|'segula', id: ..., chapter: 13, data: ... }
+            const [psalmText, setPsalmText] = useState(null);
+            const [loadingPsalm, setLoadingPsalm] = useState(false);
+
+            // State Formulaire
             const [editingId, setEditingId] = useState(null);
-            const [formData, setFormData] = useState({
-                name: '',
-                hebrewDate: '',
-                birthDate: '',
-                gender: 'girl'
-            });
+            const [formData, setFormData] = useState({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
 
-            // --- INITIALIZATION ---
-
+            // --- INIT ---
             useEffect(() => {
                 const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
                     setUser(currentUser);
@@ -157,67 +160,56 @@
                 try {
                     const date = new Date();
                     const formatter = new Intl.DateTimeFormat('fr-FR-u-ca-hebrew', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
+                        day: 'numeric', month: 'long', year: 'numeric'
                     });
                     setTodayHebrew(formatter.format(date));
-                } catch (e) {
-                    setTodayHebrew("Date non disponible");
-                }
+                } catch (e) { setTodayHebrew(""); }
 
                 return () => unsubscribe();
             }, []);
 
-            // --- FIRESTORE LISTENERS ---
-
+            // --- LISTENERS ---
             useEffect(() => {
                 if (!user) return;
 
+                // 1. Enfants
                 const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
                 const unsubscribeChildren = onSnapshot(childrenRef, (snapshot) => {
                     const kids = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setChildren(kids);
-                }, (error) => {
-                    console.error("Error fetching children:", error);
-                    if (error.code === 'permission-denied') {
-                         console.warn("Permission denied. Database rules likely need updating.");
-                    }
                 });
 
+                // 2. Statut Enfants (Journalier)
                 const todayStr = new Date().toDateString();
                 const completedRef = doc(db, 'artifacts', appId, 'users', user.uid, 'completed', todayStr);
-                
                 const unsubscribeCompleted = onSnapshot(completedRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        setCompletedIds(docSnap.data().ids || []);
-                    } else {
-                        setCompletedIds([]);
-                    }
-                }, (error) => console.error("Error fetching completion:", error));
+                    if (docSnap.exists()) setCompletedIds(docSnap.data().ids || []);
+                    else setCompletedIds([]);
+                });
 
-                return () => {
-                    unsubscribeChildren();
-                    unsubscribeCompleted();
-                };
+                // 3. Progression Ségoula 13x13 (Permanent)
+                const segulaRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'segula_progress');
+                const unsubscribeSegula = onSnapshot(segulaRef, (docSnap) => {
+                    if (docSnap.exists()) setSegulaProgress(docSnap.data());
+                    else setSegulaProgress({}); // Reset or default
+                });
+
+                return () => { unsubscribeChildren(); unsubscribeCompleted(); unsubscribeSegula(); };
             }, [user]);
 
-            // --- ACTIONS ---
-
+            // --- LOGIC ---
             const handleGoogleLogin = async () => {
                 try {
                     const provider = new GoogleAuthProvider();
                     await signInWithPopup(auth, provider);
-                } catch (error) {
-                    console.error("Login failed", error);
-                    alert("Erreur de connexion Google: " + error.message);
-                }
+                } catch (error) { alert("Erreur: " + error.message); }
             };
 
             const handleLogout = async () => {
                 if (window.confirm("Voulez-vous vraiment vous déconnecter ?")) {
                     await signOut(auth);
-                    setView('list'); // Reset view on logout
+                    setActiveTab('children');
+                    setView('list');
                 }
             };
 
@@ -226,550 +218,340 @@
                 const today = new Date();
                 let age = today.getFullYear() - birthDate.getFullYear();
                 const m = today.getMonth() - birthDate.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                    age--;
-                }
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
                 return age + 1;
             };
 
             const cleanText = (text, isHebrew = false) => {
                 if (!text) return "";
-                let cleaned = text
-                    .replace(/<[^>]+>/g, '') 
-                    .replace(/&[a-z0-9#]+;/gi, '') 
-                    .replace(/\{[^}]+\}/g, '') 
-                    .replace(/\[[^\]]+\]/g, '') 
-                    .replace(/׀/g, '') 
-                    .trim();
-                if (isHebrew) {
-                    cleaned = cleaned.replace(/[a-zA-Z]/g, '');
-                }
+                let cleaned = text.replace(/<[^>]+>/g, '').replace(/&[a-z0-9#]+;/gi, '').replace(/\{[^}]+\}/g, '').replace(/\[[^\]]+\]/g, '').replace(/׀/g, '').trim();
+                if (isHebrew) cleaned = cleaned.replace(/[a-zA-Z]/g, '');
                 return cleaned;
             };
 
-            const markAsDone = async (childId) => {
-                if (!user) return;
-                const todayStr = new Date().toDateString();
-                const completedRef = doc(db, 'artifacts', appId, 'users', user.uid, 'completed', todayStr);
-                
-                const newIds = [...completedIds, childId];
-                setCompletedIds(newIds);
-
-                try {
-                    await setDoc(completedRef, { ids: newIds, date: todayStr }, { merge: true });
-                } catch (e) {
-                    console.error("Error saving completion", e);
-                }
-            };
-
-            const handleDownloadBackup = () => {
-                if (children.length === 0) {
-                    alert("La liste est vide, rien à sauvegarder.");
-                    return;
-                }
-                const jsonString = JSON.stringify(children, null, 2);
-                const blob = new Blob([jsonString], { type: "application/json" });
-                const href = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = href;
-                link.download = `tehillim_backup_${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(href);
-            };
-
-            const restoreDefaults = async () => {
-                if (!user) {
-                    alert("Veuillez vous connecter d'abord.");
-                    return;
-                }
-                
-                if (!window.confirm("⚠️ ATTENTION : Cela va EFFACER votre liste actuelle et la remplacer par la nouvelle liste complète (avec les derniers ajouts). Voulez-vous continuer ?")) return;
-
-                const batch = writeBatch(db);
-                const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
-
-                try {
-                    // 1. Get all existing documents to delete them
-                    const snapshot = await getDocs(childrenRef);
-                    snapshot.forEach((doc) => {
-                        batch.delete(doc.ref);
-                    });
-
-                    // 2. Add new default data
-                    INITIAL_DATA.forEach(child => {
-                        const newDocRef = doc(childrenRef);
-                        batch.set(newDocRef, child);
-                    });
-
-                    await batch.commit();
-                    alert("La liste a été mise à jour avec succès !");
-                } catch (error) {
-                    console.error("Erreur lors de la restauration:", error);
-                    if (error.code === 'permission-denied') {
-                        alert("🔒 ERREUR PERMISSION : Les règles de sécurité Firebase bloquent l'écriture.");
-                    } else {
-                        alert("Erreur lors de la sauvegarde : " + error.message);
-                    }
-                }
-            };
-
-            const handleSave = async (e) => {
-                e.preventDefault();
-                if (!user) return;
-
-                try {
-                    if (editingId) {
-                        const childRef = doc(db, 'artifacts', appId, 'users', user.uid, 'children', editingId);
-                        await updateDoc(childRef, formData);
-                        setEditingId(null);
-                    } else {
-                        const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
-                        await addDoc(childrenRef, formData);
-                    }
-                    setFormData({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
-                } catch (error) {
-                    console.error("Error saving child:", error);
-                    if (error.code === 'permission-denied') {
-                        alert("🔒 ERREUR PERMISSION : Les règles de sécurité Firebase bloquent l'écriture.");
-                    } else {
-                        alert("Erreur de sauvegarde: " + error.message);
-                    }
-                }
-            };
-
-            const deleteChild = async (id) => {
-                if (!user) return;
-                if (window.confirm('Voulez-vous vraiment supprimer cet enfant de la liste ?')) {
-                    try {
-                        const childRef = doc(db, 'artifacts', appId, 'users', user.uid, 'children', id);
-                        await deleteDoc(childRef);
-                    } catch (e) {
-                        console.error("Error deleting", e);
-                        if (e.code === 'permission-denied') {
-                            alert("🔒 Permission refusée.");
-                        }
-                    }
-                }
-            };
-
-            const openReader = async (child) => {
-                setReadingChild(child);
+            const openReader = async (context) => {
+                setReaderContext(context);
                 setView('reader');
                 setLoadingPsalm(true);
                 setPsalmText(null);
-                const chapter = calculateChapter(child.birthDate);
+                
                 try {
-                    const response = await fetch(`https://www.sefaria.org/api/texts/Psalms.${chapter}?context=0`);
+                    const response = await fetch(`https://www.sefaria.org/api/texts/Psalms.${context.chapter}?context=0`);
                     const data = await response.json();
                     setPsalmText(data);
                 } catch (error) {
                     console.error("Error fetching Psalm", error);
+                    alert("Erreur de chargement du texte. Vérifiez votre connexion.");
                 } finally {
                     setLoadingPsalm(false);
                 }
             };
 
-            const closeReader = (markDone = false) => {
-                if (markDone && readingChild) {
-                    markAsDone(readingChild.id);
-                }
-                setView('list');
-                setReadingChild(null);
-                setPsalmText(null);
+            // Actions Spécifiques Ségoula
+            const incrementSegula = async (id) => {
+                if (!user) return;
+                const currentCount = segulaProgress[id] || 0;
+                if (currentCount >= 13) return; // Max atteint
+
+                const newCount = currentCount + 1;
+                const segulaRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'segula_progress');
+                
+                // Optimistic UI
+                setSegulaProgress(prev => ({...prev, [id]: newCount}));
+                
+                await setDoc(segulaRef, { [id]: newCount }, { merge: true });
             };
 
-            const startEdit = (child) => {
-                setFormData(child);
-                setEditingId(child.id);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            const resetSegula = async (id) => {
+                if (!window.confirm("Voulez-vous remettre ce compteur à zéro ?")) return;
+                const segulaRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'segula_progress');
+                setSegulaProgress(prev => ({...prev, [id]: 0}));
+                await setDoc(segulaRef, { [id]: 0 }, { merge: true });
             };
 
-            const sortedChildren = [...children].sort((a, b) => 
-                new Date(b.birthDate) - new Date(a.birthDate)
+            // Actions Enfants
+            const markChildAsDone = async (childId) => {
+                if (!user) return;
+                const todayStr = new Date().toDateString();
+                const completedRef = doc(db, 'artifacts', appId, 'users', user.uid, 'completed', todayStr);
+                const newIds = [...completedIds, childId];
+                setCompletedIds(newIds);
+                await setDoc(completedRef, { ids: newIds, date: todayStr }, { merge: true });
+            };
+
+            // Gestion de données
+            const handleDownloadBackup = () => {
+                const jsonString = JSON.stringify(children, null, 2);
+                const blob = new Blob([jsonString], { type: "application/json" });
+                const href = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = href; link.download = `backup_tehillim.json`;
+                document.body.appendChild(link); link.click();
+                document.body.removeChild(link);
+            };
+
+            const restoreDefaults = async () => {
+                if (!user || !window.confirm("⚠️ ATTENTION : Cela va EFFACER votre liste actuelle et la remplacer par la nouvelle liste complète. Continuer ?")) return;
+                const batch = writeBatch(db);
+                const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
+                try {
+                    const snapshot = await getDocs(childrenRef);
+                    snapshot.forEach(doc => batch.delete(doc.ref));
+                    INITIAL_DATA.forEach(child => batch.set(doc(childrenRef), child));
+                    await batch.commit();
+                    alert("Liste mise à jour !");
+                } catch (e) { alert("Erreur : " + e.message); }
+            };
+
+            const handleSaveChild = async (e) => {
+                e.preventDefault();
+                if (!user) return;
+                if (editingId) await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', editingId), formData);
+                else await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'children'), formData);
+                setEditingId(null); setFormData({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
+            };
+
+            const deleteChild = async (id) => {
+                if (window.confirm('Supprimer cet enfant ?')) await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', id));
+            };
+
+            // --- RENDER HELPERS ---
+
+            if (loadingAuth) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>;
+
+            if (!user) return (
+                <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-sm w-full text-center">
+                        <h1 className="text-2xl font-bold text-slate-800 font-serif mb-2">אל הנער הזה התפללתי</h1>
+                        <p className="text-slate-500 mb-8 uppercase tracking-widest text-xs">Les Tehilim de Maman</p>
+                        <button onClick={handleGoogleLogin} className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow-sm shadow-blue-200">
+                            <LogIn size={20} /> Se connecter avec Google
+                        </button>
+                    </div>
+                </div>
             );
 
-            // --- RENDERING AUTH GATE ---
-
-            if (loadingAuth) {
-                return (
-                    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                         <Loader2 className="animate-spin text-slate-400" size={32} />
-                    </div>
-                );
-            }
-
-            if (!user) {
-                return (
-                    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-sm w-full text-center">
-                            <h1 className="text-2xl font-bold text-slate-800 font-serif mb-2">
-                                אל הנער הזה התפללתי
-                            </h1>
-                            <p className="text-slate-500 mb-8 uppercase tracking-widest text-xs">
-                                Les Tehilim de Maman
-                            </p>
-                            
-                            <div className="mb-6">
-                                <span className="inline-block p-4 rounded-full bg-blue-50 text-blue-500 mb-2">
-                                    <BookOpen size={32} />
-                                </span>
-                                <p className="text-sm text-slate-600">
-                                    Connectez-vous pour accéder à votre liste de prières.
-                                </p>
-                            </div>
-
-                            <button 
-                                onClick={handleGoogleLogin}
-                                className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-sm shadow-blue-200"
-                            >
-                                <LogIn size={20} />
-                                Se connecter avec Google
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
-
-            // --- MAIN APP VIEWS (Authenticated) ---
-
-            if (view === 'reader' && readingChild) {
-                const chapter = calculateChapter(readingChild.birthDate);
-                const isBoy = readingChild.gender === 'boy';
-                const accentColor = isBoy ? 'text-blue-600' : 'text-pink-600';
-                const bgAccent = isBoy ? 'bg-blue-50' : 'bg-pink-50';
+            // --- VUE LECTEUR ---
+            if (view === 'reader' && readerContext) {
+                const isSegula = readerContext.type === 'segula';
+                const segulaCount = isSegula ? (segulaProgress[readerContext.id] || 0) : 0;
+                const isSegulaDone = segulaCount >= 13;
 
                 return (
                     <div className="min-h-screen bg-white flex flex-col">
-                        <header className="bg-white border-b border-slate-100 sticky top-0 z-20 px-4 py-3 flex items-center justify-between shadow-sm">
-                            <button onClick={() => closeReader(false)} className="flex items-center gap-1 text-slate-600 font-medium">
-                                <ArrowLeft size={20} />
-                                Retour
-                            </button>
+                        <header className="bg-white border-b sticky top-0 z-20 px-4 py-3 flex items-center justify-between">
+                            <button onClick={() => setView('list')} className="flex items-center gap-1 text-slate-600"><ArrowLeft size={20} /> Retour</button>
                             <div className="text-center">
-                                <span className={`text-xs font-bold uppercase tracking-wider ${accentColor}`}>
-                                    Psaume {chapter}
-                                </span>
-                                <p className="text-sm font-semibold text-slate-800 truncate max-w-[150px]">
-                                    {readingChild.name}
+                                <span className="text-xs font-bold text-blue-600 uppercase">Psaume {readerContext.chapter}</span>
+                                <p className="text-sm font-semibold truncate max-w-[200px]">
+                                    {readerContext.type === 'child' ? readerContext.data.name : 
+                                     readerContext.type === 'segula' ? `Ségoula #${readerContext.id}` : 'Lecture Libre'}
                                 </p>
                             </div>
                             <div className="w-8"></div>
                         </header>
-
                         <main className="flex-1 p-6 max-w-2xl mx-auto w-full">
-                            {loadingPsalm ? (
-                                <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
-                                    <Loader2 className="animate-spin" size={32} />
-                                    <p>Chargement du Psaume...</p>
-                                </div>
-                            ) : psalmText ? (
-                                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 pb-12">
-                                    <div className="text-right font-serif text-2xl leading-loose text-slate-900 mb-8" dir="rtl">
-                                        {psalmText.he.map((verse, index) => (
-                                            <span key={index}>
-                                                <span className="text-xs text-slate-400 align-top ml-1 select-none">
-                                                    ({index + 1})
-                                                </span>
-                                                {cleanText(verse, true)}{" "}
-                                            </span>
-                                        ))}
-                                    </div>
-
+                            {loadingPsalm ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-slate-400" /></div> : psalmText && (
+                                <div className="pb-24">
+                                    <div className="text-right font-serif text-2xl leading-loose text-slate-900 mb-8" dir="rtl">{psalmText.he.map((v, i) => <span key={i}><span className="text-xs text-slate-400 ml-1">({i+1})</span>{cleanText(v, true)} </span>)}</div>
                                     <div className="h-px bg-slate-100 my-8 mx-10"></div>
-
-                                    <div className="text-left font-serif text-lg leading-relaxed text-slate-600">
-                                        {psalmText.text.map((verse, index) => (
-                                            <p key={index} className="mb-2">
-                                                <sup className="text-xs text-slate-400 mr-2">{index + 1}</sup>
-                                                {cleanText(verse, false)}
-                                            </p>
-                                        ))}
-                                    </div>
-                                    
-                                    <div className="mt-12 sticky bottom-6">
-                                        <button 
-                                            onClick={() => closeReader(true)}
-                                            className="w-full bg-green-600 text-white shadow-lg shadow-green-200 font-bold text-lg py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-green-700 transition-all active:scale-95"
-                                        >
-                                            <CheckCircle size={24} />
-                                            J'ai terminé la lecture
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-center py-10 text-red-400">
-                                    <p>Impossible de charger le texte.</p>
-                                    <p className="text-sm text-slate-500">Vérifiez votre connexion internet.</p>
+                                    <div className="text-left font-serif text-lg leading-relaxed text-slate-600">{psalmText.text.map((v, i) => <p key={i} className="mb-2"><sup className="text-xs text-slate-400 mr-2">{i+1}</sup>{cleanText(v)}</p>)}</div>
                                 </div>
                             )}
                         </main>
+                        
+                        {/* Footer d'action */}
+                        <div className="sticky bottom-0 bg-white border-t p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                            <div className="max-w-md mx-auto">
+                                {readerContext.type === 'child' && (
+                                    <button onClick={() => { markChildAsDone(readerContext.id); setView('list'); }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                                        <CheckCircle size={24} /> J'ai terminé
+                                    </button>
+                                )}
+                                {readerContext.type === 'segula' && (
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 text-center">
+                                            <span className="block text-xs text-slate-500 uppercase tracking-wide">Compteur</span>
+                                            <span className={`text-2xl font-bold ${isSegulaDone ? 'text-green-600' : 'text-blue-600'}`}>{segulaCount} / 13</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => incrementSegula(readerContext.id)}
+                                            disabled={isSegulaDone}
+                                            className={`flex-2 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${isSegulaDone ? 'bg-green-100 text-green-700' : 'bg-blue-600 text-white shadow-lg shadow-blue-200'}`}
+                                        >
+                                            {isSegulaDone ? <Check size={20} /> : <Repeat size={20} />}
+                                            {isSegulaDone ? 'Terminé !' : 'J\'ai lu le Psaume'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 );
             }
 
+            // --- VUE PRINCIPALE (Liste) ---
             return (
-                <div className="min-h-screen bg-slate-50 pb-20 font-sans">
-                    <header className="bg-white shadow-sm sticky top-0 z-10 border-b border-slate-200">
-                        <div className="bg-slate-50 py-1 px-4 flex justify-between items-center border-b border-slate-100">
-                            <p className="text-xs text-slate-500 font-medium font-serif">
-                                {todayHebrew || "Chargement..."}
-                            </p>
+                <div className="min-h-screen bg-slate-50 pb-20 font-sans flex flex-col">
+                    {/* Header Fixe */}
+                    <div className="bg-white shadow-sm sticky top-0 z-10">
+                        {/* Top Bar */}
+                        <div className="bg-slate-50 py-1 px-4 flex justify-between items-center text-[10px] border-b">
+                            <p className="text-slate-500 font-serif font-medium">{todayHebrew}</p>
                             <div className="flex items-center gap-2">
-                                <p className="text-[10px] text-green-600 flex items-center gap-1 font-medium">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                    {user.email}
-                                </p>
-                                <button onClick={handleLogout} title="Déconnexion" className="text-slate-400 hover:text-red-500">
-                                    <LogOut size={12} />
-                                </button>
+                                <span className="flex items-center gap-1 text-green-600 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>{user.email}</span>
+                                <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 transition-colors p-1"><LogOut size={14} /></button>
                             </div>
                         </div>
-                        <div className="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
+                        
+                        {/* Titre & Settings */}
+                        <div className="px-4 py-3 flex justify-between items-center">
                             <div>
-                                <h1 className="text-xl font-bold text-slate-800 text-center font-serif leading-tight">
-                                    אל הנער הזה התפללתי
-                                </h1>
-                                <p className="text-xs text-slate-500 text-center uppercase tracking-widest mt-1">
-                                    Les Tehilim de Maman
-                                </p>
-                                {view === 'list' && (
-                                    <p className="text-xs text-green-600 font-medium text-center uppercase tracking-widest mt-1 flex items-center gap-1 justify-center">
-                                        <CheckCircle size={10} />
-                                        {completedIds.length} / {sortedChildren.length || 1} Terminés
-                                    </p>
-                                )}
+                                <h1 className="text-lg font-bold text-slate-800 font-serif">אל הנער הזה התפללתי</h1>
+                                <p className="text-[10px] text-slate-500 uppercase tracking-widest">Les Tehilim de Maman</p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {view === 'list' && (
-                                    <button 
-                                        onClick={handleDownloadBackup}
-                                        className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
-                                        title="Sauvegarder sur le téléphone"
-                                    >
-                                        <Download size={20} className="text-slate-600" />
-                                    </button>
-                                )}
-                                <button 
-                                    onClick={() => setView(view === 'list' ? 'settings' : 'list')}
-                                    className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
-                                >
-                                    {view === 'list' ? <Settings size={20} className="text-slate-600" /> : <X size={20} className="text-slate-600" />}
-                                </button>
+                            <div className="flex gap-2">
+                                {view === 'list' && activeTab === 'children' && <button onClick={handleDownloadBackup} className="p-2 bg-slate-100 rounded-full text-slate-600"><Download size={18} /></button>}
+                                <button onClick={() => setView(view === 'settings' ? 'list' : 'settings')} className="p-2 bg-slate-100 rounded-full text-slate-600">{view === 'settings' ? <X size={18} /> : <Settings size={18} />}</button>
                             </div>
                         </div>
-                        {view === 'list' && sortedChildren.length > 0 && (
-                            <div className="h-1 bg-slate-100 w-full">
-                                <div 
-                                    className="h-full bg-green-500 transition-all duration-500 ease-out"
-                                    style={{ width: `${(completedIds.length / sortedChildren.length) * 100}%` }}
-                                ></div>
+
+                        {/* Onglets de Navigation */}
+                        {view !== 'settings' && (
+                            <div className="flex border-b text-sm font-medium">
+                                <button onClick={() => setActiveTab('children')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'children' ? 'tab-active' : 'tab-inactive'}`}>
+                                    <Users size={16} /> Enfants
+                                </button>
+                                <button onClick={() => setActiveTab('all')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'all' ? 'tab-active' : 'tab-inactive'}`}>
+                                    <Grid size={16} /> Tout
+                                </button>
+                                <button onClick={() => setActiveTab('segula')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'segula' ? 'tab-active' : 'tab-inactive'}`}>
+                                    <Repeat size={16} /> 13 x 13
+                                </button>
                             </div>
                         )}
-                    </header>
+                    </div>
 
-                    <main className="max-w-md mx-auto p-4">
-                        {view === 'list' ? (
-                            <div className="space-y-4">
-                                {sortedChildren.map((child) => {
-                                    const chapter = calculateChapter(child.birthDate);
-                                    const isBoy = child.gender === 'boy';
-                                    const isDone = completedIds.includes(child.id);
-                                    
-                                    return (
-                                        <div 
-                                            key={child.id} 
-                                            className={`rounded-2xl shadow-sm border overflow-hidden relative transition-all duration-300 ${
-                                                isDone ? 'bg-green-50/50 border-green-200' : 'bg-white border-slate-100'
-                                            }`}
-                                        >
-                                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isBoy ? 'bg-blue-400' : 'bg-pink-400'} ${isDone ? 'opacity-50' : ''}`}></div>
-                                            
-                                            <div className="p-5 pl-7">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <Heart 
-                                                                size={16} 
-                                                                className={`${isBoy ? 'text-blue-500 fill-blue-500' : 'text-pink-500 fill-pink-500'}`} 
-                                                            />
-                                                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                                                {child.hebrewDate}
-                                                            </span>
-                                                        </div>
-                                                        <h2 className={`text-lg font-bold leading-snug mb-2 flex items-center gap-2 ${isDone ? 'text-green-800' : 'text-slate-800'}`}>
-                                                            {child.name}
-                                                            {isDone && <CheckCircle size={18} className="text-green-500 fill-green-100" />}
-                                                        </h2>
-                                                    </div>
-                                                    
-                                                    <div className={`flex flex-col items-center justify-center rounded-xl p-3 border min-w-[80px] ${isDone ? 'bg-green-100 border-green-200' : 'bg-slate-50 border-slate-100'}`}>
-                                                        <span className={`text-xs font-medium ${isDone ? 'text-green-600' : 'text-slate-400'}`}>Psaume</span>
-                                                        <span className={`text-3xl font-bold ${isDone ? 'text-green-700' : 'text-slate-700'}`}>{chapter}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className={`mt-4 pt-3 border-t flex justify-end ${isDone ? 'border-green-100' : 'border-slate-50'}`}>
-                                                    <button 
-                                                        onClick={() => openReader(child)}
-                                                        className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors w-full justify-center ${
-                                                            isDone 
-                                                            ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                                                            : (isBoy ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-pink-50 text-pink-700 hover:bg-pink-100')
-                                                        }`}
-                                                    >
-                                                        {isDone ? <Check size={16} /> : <BookOpen size={16} />}
-                                                        {isDone ? `Relire Psaume ${chapter}` : `Lire le Psaume ${chapter}`}
-                                                    </button>
-                                                </div>
-                                            </div>
+                    <main className="flex-1 p-4 max-w-md mx-auto w-full">
+                        {view === 'settings' ? (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 space-y-6">
+                                <div className="bg-white p-5 rounded-xl border shadow-sm">
+                                    <h2 className="font-bold flex items-center gap-2 mb-4 text-slate-800">{editingId ? <Edit2 size={18} /> : <Plus size={18} />} {editingId ? 'Modifier' : 'Ajouter un enfant'}</h2>
+                                    <form onSubmit={handleSaveChild} className="space-y-4">
+                                        <input required className="w-full p-3 bg-slate-50 border rounded-lg text-sm" placeholder="Nom complet" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <input required className="w-full p-3 bg-slate-50 border rounded-lg text-sm" placeholder="Date Hébraïque" value={formData.hebrewDate} onChange={e => setFormData({...formData, hebrewDate: e.target.value})} />
+                                            <select className="w-full p-3 bg-slate-50 border rounded-lg text-sm" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}><option value="girl">Fille ❤️</option><option value="boy">Garçon 💙</option></select>
                                         </div>
-                                    );
-                                })}
-                                
-                                {sortedChildren.length === 0 && (
-                                    <div className="text-center py-10 text-slate-400">
-                                        <p>Votre liste est vide.</p>
-                                        <p className="text-sm">Allez dans les paramètres pour restaurer la liste par défaut ou ajouter des enfants.</p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-                                    <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <Settings size={18} />
-                                        Compte
-                                    </h2>
-                                    <div className="bg-green-50 border border-green-100 rounded-lg p-4 flex items-center justify-between">
-                                        <div className="text-sm text-green-800">
-                                            <p className="font-bold">Connecté avec Google</p>
-                                            <p>{user.email}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <button 
-                                        type="button"
-                                        onClick={restoreDefaults}
-                                        className="w-full mt-4 bg-slate-100 text-slate-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-200 flex items-center justify-center gap-2"
-                                    >
-                                        <RefreshCw size={16} />
-                                        Réinitialiser avec la nouvelle liste complète
-                                    </button>
-                                </div>
-
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
-                                    <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        {editingId ? <Edit2 size={18} /> : <Plus size={18} />}
-                                        {editingId ? 'Modifier' : 'Ajouter un enfant'}
-                                    </h2>
-                                    
-                                    <form onSubmit={handleSave} className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-600 mb-1">Nom complet</label>
-                                            <input
-                                                required
-                                                type="text"
-                                                value={formData.name}
-                                                onChange={e => setFormData({...formData, name: e.target.value})}
-                                                placeholder="Ex: Sheina bat Aziza Sara"
-                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-600 mb-1">Date Hébraïque</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.hebrewDate}
-                                                    onChange={e => setFormData({...formData, hebrewDate: e.target.value})}
-                                                    placeholder="Ex: 8 Tichri"
-                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                                />
-                                            </div>
-                                            
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-600 mb-1">Genre</label>
-                                                <select
-                                                    value={formData.gender}
-                                                    onChange={e => setFormData({...formData, gender: e.target.value})}
-                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                                >
-                                                    <option value="girl">Fille (❤️)</option>
-                                                    <option value="boy">Garçon (💙)</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-600 mb-1">
-                                                Date de naissance (pour le calcul)
-                                            </label>
-                                            <input
-                                                required
-                                                type="date"
-                                                value={formData.birthDate}
-                                                onChange={e => setFormData({...formData, birthDate: e.target.value})}
-                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                            <p className="text-xs text-slate-400 mt-1">Utilisée pour calculer l'âge automatiquement.</p>
-                                        </div>
-
-                                        <div className="flex gap-2 pt-2">
-                                            {editingId && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setEditingId(null);
-                                                        setFormData({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
-                                                    }}
-                                                    className="px-4 py-3 rounded-lg border border-slate-200 text-slate-600 font-medium flex-1"
-                                                >
-                                                    Annuler
-                                                </button>
-                                            )}
-                                            <button
-                                                type="submit"
-                                                className="bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 flex-1 flex items-center justify-center gap-2"
-                                            >
-                                                <Save size={18} />
-                                                {editingId ? 'Mettre à jour' : 'Enregistrer'}
-                                            </button>
+                                        <input required type="date" className="w-full p-3 bg-slate-50 border rounded-lg text-sm" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
+                                        <div className="flex gap-2">
+                                            {editingId && <button type="button" onClick={() => {setEditingId(null); setFormData({name:'',hebrewDate:'',birthDate:'',gender:'girl'})}} className="flex-1 py-3 border rounded-lg text-slate-600 font-medium">Annuler</button>}
+                                            <button type="submit" className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold shadow-md shadow-blue-100 flex items-center justify-center gap-2"><Save size={18} /> {editingId ? 'Mettre à jour' : 'Enregistrer'}</button>
                                         </div>
                                     </form>
                                 </div>
-
-                                <div className="space-y-3">
-                                    <h3 className="font-semibold text-slate-500 text-sm uppercase tracking-wider mb-2">Gérer la liste ({sortedChildren.length})</h3>
-                                    {sortedChildren.map((child) => (
-                                        <div key={child.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className={`w-2 h-8 rounded-full ${child.gender === 'boy' ? 'bg-blue-400' : 'bg-pink-400'}`}></div>
-                                                <div className="truncate">
-                                                    <p className="font-medium text-slate-800 truncate">{child.name}</p>
-                                                    <p className="text-xs text-slate-500">{new Date(child.birthDate).toLocaleDateString('fr-FR')}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <button 
-                                                    onClick={() => startEdit(child)}
-                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                                                >
-                                                    <Edit2 size={18} />
-                                                </button>
-                                                <button 
-                                                    onClick={() => deleteChild(child.id)}
-                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="bg-white p-5 rounded-xl border shadow-sm">
+                                    <h2 className="font-bold mb-4 text-slate-800 flex items-center gap-2"><Settings size={18} /> Administration</h2>
+                                    <button type="button" onClick={restoreDefaults} className="w-full py-3 bg-red-50 text-red-600 text-sm font-bold border border-red-100 rounded-xl flex items-center justify-center gap-2"><RefreshCw size={16} /> Réinitialiser avec la nouvelle liste complète</button>
                                 </div>
                             </div>
+                        ) : (
+                            <>
+                                {/* --- ONGLET ENFANTS --- */}
+                                {activeTab === 'children' && (
+                                    <div className="space-y-4">
+                                        <div className="text-center text-xs font-bold text-green-600 flex items-center justify-center gap-1 mb-2">
+                                            <CheckCircle size={10} /> {completedIds.length} / {children.length} Terminés aujourd'hui
+                                        </div>
+                                        {children.sort((a,b) => new Date(b.birthDate) - new Date(a.birthDate)).map(child => {
+                                            const chapter = calculateChapter(child.birthDate);
+                                            const isDone = completedIds.includes(child.id);
+                                            return (
+                                                <div key={child.id} className={`rounded-2xl border overflow-hidden relative p-5 pl-7 transition-all ${isDone ? 'bg-green-50 border-green-200 shadow-none' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${child.gender === 'boy' ? 'bg-blue-400' : 'bg-pink-400'}`}></div>
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1 pr-2">
+                                                            <div className="text-xs text-slate-400 mb-1 flex items-center gap-1 uppercase font-semibold tracking-wider">
+                                                                <Heart size={14} className={child.gender === 'boy' ? 'text-blue-500 fill-blue-500' : 'text-pink-500 fill-pink-500'} /> 
+                                                                {child.hebrewDate}
+                                                            </div>
+                                                            <h2 className={`text-lg font-bold leading-tight ${isDone ? 'text-green-800' : 'text-slate-800'}`}>{child.name}</h2>
+                                                        </div>
+                                                        <div className={`flex flex-col items-center justify-center p-2 rounded-xl border min-w-[60px] ${isDone ? 'bg-green-100 border-green-200' : 'bg-slate-50 border-slate-100'}`}>
+                                                            <span className="text-[10px] text-slate-400">Psaume</span>
+                                                            <span className="text-2xl font-bold">{chapter}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2 mt-4">
+                                                        <button onClick={() => openReader({ type: 'child', id: child.id, chapter, data: child })} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${isDone ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                                                            {isDone ? <RefreshCw size={14} /> : <BookOpen size={14} />} {isDone ? 'Relire' : 'Lire'}
+                                                        </button>
+                                                        <div className="flex gap-1">
+                                                            <button onClick={() => startEdit(child)} className="p-2 bg-white border rounded-lg text-slate-400 hover:text-blue-600"><Edit2 size={16} /></button>
+                                                            <button onClick={() => deleteChild(child.id)} className="p-2 bg-white border rounded-lg text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* --- ONGLET TOUT TEHILLIM --- */}
+                                {activeTab === 'all' && (
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {Array.from({ length: 150 }, (_, i) => i + 1).map(num => (
+                                            <button 
+                                                key={num}
+                                                onClick={() => openReader({ type: 'chapter', id: num, chapter: num })}
+                                                className="aspect-square bg-white border border-slate-200 rounded-xl flex items-center justify-center font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-colors shadow-sm"
+                                            >
+                                                {num}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* --- ONGLET 13 x 13 --- */}
+                                {activeTab === 'segula' && (
+                                    <div className="space-y-3">
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4 text-center">
+                                            <h3 className="font-bold text-blue-800 text-lg">Ségoula du Psaume 13</h3>
+                                            <p className="text-sm text-blue-600">Dire 13 fois le Psaume 13</p>
+                                        </div>
+                                        {[1, 2, 3, 4, 5].map(id => {
+                                            const count = segulaProgress[id] || 0;
+                                            const isDone = count >= 13;
+                                            return (
+                                                <div key={id} className={`bg-white border rounded-xl p-4 flex items-center justify-between shadow-sm ${isDone ? 'border-green-200 bg-green-50' : 'border-slate-100'}`}>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                            {isDone ? <Check size={20} /> : `#${id}`}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className={`font-bold ${isDone ? 'text-green-800' : 'text-slate-800'}`}>Ségoula #{id}</h4>
+                                                            <div className="text-xs font-medium text-slate-500 mt-1">
+                                                                Progression : <span className={isDone ? 'text-green-600' : 'text-blue-600'}>{count} / 13</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button 
+                                                            onClick={() => openReader({ type: 'segula', id: id, chapter: 13 })}
+                                                            className={`px-4 py-2 rounded-lg text-sm font-bold ${isDone ? 'bg-white text-green-700 border border-green-200' : 'bg-blue-600 text-white shadow-md shadow-blue-100'}`}
+                                                        >
+                                                            {isDone ? 'Voir' : 'Commencer'}
+                                                        </button>
+                                                        {count > 0 && !isDone && (
+                                                            <button onClick={() => resetSegula(id)} className="p-2 text-slate-300 hover:text-red-400" title="Réinitialiser"><RefreshCw size={16} /></button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </main>
                 </div>
