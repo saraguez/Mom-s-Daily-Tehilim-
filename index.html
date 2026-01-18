@@ -365,7 +365,7 @@
                         <main className="flex-1 p-6 max-w-2xl mx-auto w-full">
                             {loadingPsalm ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-slate-400" /></div> : psalmText && (
                                 <div className="pb-24">
-                                    <div className="text-right font-serif text-2xl leading-loose text-slate-900 mb-8" dir="rtl">{psalmText.he.map((v, i) => <span key={i}><span className="text-xs text-slate-400 ml-1">({i+1})</span>{cleanText(v, true)} </span>)}</div>
+                                    <div className="text-right font-serif text-4xl leading-loose text-slate-900 mb-8" dir="rtl">{psalmText.he.map((v, i) => <span key={i}><span className="text-lg text-slate-400 ml-2">({i+1})</span>{cleanText(v, true)} </span>)}</div>
                                     <div className="h-px bg-slate-100 my-8 mx-10"></div>
                                     <div className="text-left font-serif text-lg leading-relaxed text-slate-600">{psalmText.text.map((v, i) => <p key={i} className="mb-2"><sup className="text-xs text-slate-400 mr-2">{i+1}</sup>{cleanText(v)}</p>)}</div>
                                 </div>
