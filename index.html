@@ -62,6 +62,7 @@
 
         // Données initiales pour la restauration
         const INITIAL_DATA = [
+            // --- Petits-enfants (Liste originale) ---
             { name: "Sheina bat Aziza Sara", hebrewDate: "8 Tichri", birthDate: "2025-10-01", gender: "girl" },
             { name: "Zvi Ben Preciada Léa", hebrewDate: "5 Tamouz", birthDate: "2025-07-01", gender: "boy" },
             { name: "Yeshua Nahman Ben Haya Moushka", hebrewDate: "19 Adar", birthDate: "2025-03-19", gender: "boy" },
@@ -84,7 +85,26 @@
             { name: "Dvorah Léa Bat Aziza Sara", hebrewDate: "29 Sivan", birthDate: "2015-06-16", gender: "girl" },
             { name: "Shmouel Ben Dvorah Léa", hebrewDate: "2 Adar", birthDate: "2015-02-21", gender: "boy" },
             { name: "Eythan Yehuda Ben Rina Haya Moushka", hebrewDate: "24 Kislev", birthDate: "2014-12-16", gender: "boy" },
-            { name: "Haya Mushka Bat Aziza Sara", hebrewDate: "23 Kislev", birthDate: "2012-12-07", gender: "girl" }
+            { name: "Haya Mushka Bat Aziza Sara", hebrewDate: "23 Kislev", birthDate: "2012-12-07", gender: "girl" },
+            
+            // --- Nouveaux Ajouts (Enfants/Grands-enfants plus âgés) ---
+            { name: "Élie", hebrewDate: "28 Kislev", birthDate: "2002-12-03", gender: "boy" }, // 23 ans
+            { name: "Ron Baralviski Ben Tamar Noa", hebrewDate: "10 Kislev", birthDate: "2002-11-15", gender: "boy" }, // 23 ans
+            { name: "David Aharon", hebrewDate: "26 Cheshvan", birthDate: "2001-11-12", gender: "boy" }, // 24 ans
+            { name: "Avraham Betsalel", hebrewDate: "14 Tichri", birthDate: "2001-10-01", gender: "boy" }, // 24 ans
+            { name: "Rephael", hebrewDate: "11 Tichrei", birthDate: "1997-10-12", gender: "boy" }, // 28 ans
+            { name: "Preciada Lea bat Batsheva", hebrewDate: "25 Nissan 5755", birthDate: "1995-04-25", gender: "girl" }, // 31 ans
+            { name: "Haya Mouchka bat Batsheva", hebrewDate: "5 Adar 5753", birthDate: "1993-02-26", gender: "girl" }, // 32 ans
+            { name: "Odele", hebrewDate: "1 Tichri", birthDate: "1993-09-16", gender: "girl" }, // 32 ans (Date calc pour l'âge)
+            { name: "Levi Duchman", hebrewDate: "20 Sivan 5752", birthDate: "1992-06-21", gender: "boy" }, // 33 ans
+            { name: "Avraham Ben Batsheva", hebrewDate: "11 Cheshvan 5751", birthDate: "1990-10-30", gender: "boy" }, // 34 ans
+            { name: "Meir Ben Batsheva", hebrewDate: "17 Adar 5750", birthDate: "1990-03-14", gender: "boy" }, // 35 ans
+            { name: "Haya M Hassin", hebrewDate: "1 Av", birthDate: "1990-07-23", gender: "girl" }, // 35 ans
+            { name: "Dvorah Léa bat Hanna", hebrewDate: "25 Tichri 5750", birthDate: "1989-10-24", gender: "girl" }, // 35 ans
+            { name: "Rina", hebrewDate: "7 Tevet", birthDate: "1990-01-04", gender: "girl" }, // 36 ans
+            { name: "Levi Yitschak Ava Ben Batsheva", hebrewDate: "20 Sivan 5749", birthDate: "1989-06-23", gender: "boy" }, // 37 ans
+            { name: "Aziza Sara bat Batsheva", hebrewDate: "1 Shvat 5748", birthDate: "1988-01-20", gender: "girl" }, // 38 ans
+            { name: "Hillel Menahem Ben Atara", hebrewDate: "17 Adar 5746", birthDate: "1986-02-26", gender: "boy" } // 40 ans
         ];
 
         // Configuration Firebase
@@ -198,8 +218,10 @@
             };
 
             const handleLogout = async () => {
-                await signOut(auth);
-                // Le listener onAuthStateChanged s'occupera de mettre user à null
+                if (window.confirm("Voulez-vous vraiment vous déconnecter ?")) {
+                    await signOut(auth);
+                    setView('list'); // Reset view on logout
+                }
             };
 
             const calculateChapter = (birthDateString) => {
@@ -230,8 +252,6 @@
 
             const markAsDone = async (childId) => {
                 if (!user) return;
-                if (completedIds.includes(childId)) return;
-
                 const todayStr = new Date().toDateString();
                 const completedRef = doc(db, 'artifacts', appId, 'users', user.uid, 'completed', todayStr);
                 
