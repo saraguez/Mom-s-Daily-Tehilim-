@@ -134,6 +134,10 @@
                         await signInAnonymously(auth);
                     } catch (error) {
                         console.error("Erreur auth anonyme:", error);
+                        // Ajout d'une alerte claire pour l'utilisateur
+                        if (error.code === 'auth/admin-restricted-operation' || error.code === 'auth/operation-not-allowed') {
+                            alert("⚠️ Configuration requise : L'authentification 'Anonyme' n'est pas activée sur votre projet Firebase. Veuillez l'activer dans la console Firebase (Authentication > Sign-in method).");
+                        }
                     }
                 };
                 
@@ -142,6 +146,7 @@
                     if (currentUser) {
                         setUser(currentUser);
                     } else {
+                        // Petit délai pour éviter les conditions de course au chargement
                         initAuth();
                     }
                 });
@@ -443,10 +448,16 @@
             return (
                 <div className="min-h-screen bg-slate-50 pb-20 font-sans">
                     <header className="bg-white shadow-sm sticky top-0 z-10 border-b border-slate-200">
-                        <div className="bg-slate-50 py-1 text-center border-b border-slate-100">
+                        <div className="bg-slate-50 py-1 px-4 flex justify-between items-center border-b border-slate-100">
                             <p className="text-xs text-slate-500 font-medium font-serif">
                                 {todayHebrew || "Chargement..."}
                             </p>
+                            {user && !user.isAnonymous && (
+                                <p className="text-[10px] text-green-600 flex items-center gap-1 font-medium">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                    {user.email}
+                                </p>
+                            )}
                         </div>
                         <div className="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
                             <div>
