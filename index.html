@@ -49,7 +49,7 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Settings, Plus, Trash2, Edit2, Save, X, BookOpen, Heart, ArrowLeft, Loader2, Check, CheckCircle, RefreshCw, LogIn, Download, LogOut, Grid, Repeat, Users, ChevronRight, Undo, Upload } from 'lucide-react';
+        import { Settings, Plus, Trash2, Edit2, Save, X, BookOpen, Heart, ArrowLeft, Loader2, Check, CheckCircle, RefreshCw, LogIn, Download, LogOut, Grid, Repeat, Users, ChevronRight, Undo, Upload, Printer } from 'lucide-react';
         import { initializeApp } from 'firebase/app';
         import { 
             getAuth, 
@@ -138,6 +138,7 @@
             // State Auth
             const [user, setUser] = useState(null);
             const [loadingAuth, setLoadingAuth] = useState(true);
+            const [isExporting, setIsExporting] = useState(false);
             
             // State Données
             const [children, setChildren] = useState([]);
@@ -251,6 +252,105 @@
                 let cleaned = text.replace(/<[^>]+>/g, '').replace(/&[a-z0-9#]+;/gi, '').replace(/\{[^}]+\}/g, '').replace(/\[[^\]]+\]/g, '').replace(/׀/g, '').trim();
                 if (isHebrew) cleaned = cleaned.replace(/[a-zA-Z]/g, '');
                 return cleaned;
+            };
+
+            // Fonction d'export PDF
+            const handleExportPDF = async () => {
+                if (children.length === 0) {
+                    alert("Aucun enfant dans la liste.");
+                    return;
+                }
+                
+                if (!window.confirm("Cela va générer un document avec les Psaumes en hébreu pour tous les enfants. Continuer ?")) return;
+
+                setIsExporting(true);
+                try {
+                    // 1. Identify unique chapters needed
+                    const uniqueChapters = [...new Set(children.map(c => calculateChapter(c.birthDate)))];
+                    const textsCache = {};
+
+                    // 2. Fetch all needed chapters
+                    await Promise.all(uniqueChapters.map(async (chapter) => {
+                        try {
+                            const res = await fetch(`https://www.sefaria.org/api/texts/Psalms.${chapter}?context=0`);
+                            const data = await res.json();
+                            textsCache[chapter] = data.he; // Array of verses
+                        } catch (e) {
+                            console.error("Error fetching chapter " + chapter, e);
+                            textsCache[chapter] = ["(Erreur de chargement du texte)"];
+                        }
+                    }));
+
+                    // 3. Build HTML
+                    const printWindow = window.open('', '_blank');
+                    if (!printWindow) {
+                        alert("Veuillez autoriser les pop-ups pour générer le PDF.");
+                        setIsExporting(false);
+                        return;
+                    }
+
+                    let htmlContent = `
+                        <html>
+                        <head>
+                            <title>Tehilim - Export PDF</title>
+                            <style>
+                                @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Hebrew:wght@400;700&display=swap');
+                                body { font-family: 'Noto Serif Hebrew', serif; padding: 40px; direction: rtl; }
+                                .child-block { margin-bottom: 40px; break-inside: avoid; page-break-inside: avoid; border-bottom: 1px dashed #ccc; padding-bottom: 20px; }
+                                .header-info { text-align: center; margin-bottom: 15px; }
+                                .child-name { font-size: 18px; font-weight: bold; color: #333; font-family: sans-serif; direction: ltr; display: inline-block; }
+                                .chapter-title { font-size: 16px; color: #666; margin-top: 5px; }
+                                .hebrew-text { font-size: 24px; line-height: 1.4; text-align: right; }
+                                @media print {
+                                    .no-print { display: none; }
+                                    body { padding: 0; }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div style="text-align: center; margin-bottom: 40px;">
+                                <h1 style="font-size: 32px;">קונטרס תהילים</h1>
+                                <p style="font-size: 18px;">Les Tehilim de Maman</p>
+                                <p style="font-size: 14px; color: #888;">${new Date().toLocaleDateString('fr-FR')}</p>
+                            </div>
+                    `;
+
+                    // Sort children by age (youngest first)
+                    const sorted = [...children].sort((a,b) => new Date(b.birthDate) - new Date(a.birthDate));
+
+                    sorted.forEach(child => {
+                        const chapter = calculateChapter(child.birthDate);
+                        const verses = textsCache[chapter] || [];
+                        const textBlock = verses.map(v => v.replace(/<[^>]+>/g, '')).join(' ');
+
+                        htmlContent += `
+                            <div class="child-block">
+                                <div class="header-info">
+                                    <div class="child-name">${child.name}</div>
+                                    <div class="chapter-title">Psaume ${chapter}</div>
+                                </div>
+                                <div class="hebrew-text">
+                                    ${textBlock}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    htmlContent += `
+                        <script>
+                            window.onload = function() { window.print(); }
+                        <\/script>
+                        </body></html>
+                    `;
+
+                    printWindow.document.write(htmlContent);
+                    printWindow.document.close();
+
+                } catch (e) {
+                    alert("Erreur lors de la génération : " + e.message);
+                } finally {
+                    setIsExporting(false);
+                }
             };
 
             const openReader = async (context) => {
@@ -422,6 +522,17 @@
 
             if (loadingAuth) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>;
 
+            // Overlay de chargement pour l'export
+            if (isExporting) return (
+                <div className="min-h-screen flex items-center justify-center bg-black/80 fixed inset-0 z-[100] text-white flex-col gap-4">
+                    <Loader2 className="animate-spin" size={48} />
+                    <div className="text-center">
+                        <p className="text-xl font-bold">Préparation du document...</p>
+                        <p className="text-sm opacity-75">Téléchargement des textes hébreux</p>
+                    </div>
+                </div>
+            );
+
             if (!user) return (
                 <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-sm w-full text-center">
@@ -550,13 +661,24 @@
                                 </div>
                                 <div className="bg-white p-5 rounded-xl border shadow-sm space-y-4">
                                     <h2 className="font-bold text-slate-800 flex items-center gap-2"><Settings size={18} /> Administration</h2>
-                                    <button type="button" onClick={restoreDefaults} className="w-full py-3 bg-red-50 text-red-600 text-sm font-bold border border-red-100 rounded-xl flex items-center justify-center gap-2"><RefreshCw size={16} /> Réinitialiser avec la nouvelle liste complète</button>
                                     
-                                    <div className="border-t pt-4">
-                                        <input type="file" id="backup-upload" className="hidden" accept=".json" onChange={handleRestoreBackup} />
-                                        <button onClick={() => document.getElementById('backup-upload').click()} className="w-full py-3 bg-slate-100 text-slate-600 text-sm font-bold border rounded-xl flex items-center justify-center gap-2">
-                                            <Upload size={16} /> Restaurer depuis une sauvegarde
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <button onClick={handleExportPDF} className="w-full py-3 bg-slate-800 text-white text-sm font-bold border rounded-xl flex items-center justify-center gap-2 shadow-sm">
+                                            <Printer size={16} /> Générer un PDF (Hébreu)
                                         </button>
+
+                                        <div className="h-px bg-slate-100 my-2"></div>
+
+                                        <button type="button" onClick={restoreDefaults} className="w-full py-3 bg-red-50 text-red-600 text-sm font-bold border border-red-100 rounded-xl flex items-center justify-center gap-2">
+                                            <RefreshCw size={16} /> Réinitialiser avec la nouvelle liste complète
+                                        </button>
+                                        
+                                        <div className="pt-2">
+                                            <input type="file" id="backup-upload" className="hidden" accept=".json" onChange={handleRestoreBackup} />
+                                            <button onClick={() => document.getElementById('backup-upload').click()} className="w-full py-3 bg-slate-100 text-slate-600 text-sm font-bold border rounded-xl flex items-center justify-center gap-2">
+                                                <Upload size={16} /> Restaurer depuis une sauvegarde
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
