@@ -24,6 +24,9 @@
         .highlight-item {
             animation: highlight 2s ease-out;
         }
+        /* Style pour les onglets du formulaire */
+        .form-tab-active { background-color: #2563eb; color: white; }
+        .form-tab-inactive { background-color: #f1f5f9; color: #64748b; }
     </style>
 
     <!-- Import Map -->
@@ -35,7 +38,8 @@
             "lucide-react": "https://esm.sh/lucide-react@0.263.1",
             "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
             "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+            "@hebcal/core": "https://esm.sh/@hebcal/core@5.4.0"
         }
     }
     </script>
@@ -47,9 +51,9 @@
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        import React, { useState, useEffect } from 'react';
+        import React, { useState, useEffect, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Settings, Plus, Trash2, Edit2, Save, X, BookOpen, Heart, ArrowLeft, Loader2, Check, CheckCircle, RefreshCw, LogIn, Download, LogOut, Grid, Repeat, Users, ChevronRight, Undo, Upload, Printer } from 'lucide-react';
+        import { Settings, Plus, Trash2, Edit2, Save, X, BookOpen, Heart, ArrowLeft, Loader2, Check, CheckCircle, RefreshCw, LogIn, Download, LogOut, Grid, Repeat, Users, ChevronRight, Undo, Upload, Printer, Calendar, Camera, Image as ImageIcon } from 'lucide-react';
         import { initializeApp } from 'firebase/app';
         import { 
             getAuth, 
@@ -70,6 +74,7 @@
             writeBatch,
             getDocs
         } from 'firebase/firestore';
+        import { HDate, HebrewCalendar, Location } from '@hebcal/core';
 
         // --- DONNÉES INITIALES ---
         const INITIAL_DATA = [
@@ -118,6 +123,23 @@
             { name: "Hillel Menahem Ben Atara", hebrewDate: "17 Adar 5746", birthDate: "1986-02-26", gender: "boy" }
         ];
 
+        const HEBREW_MONTHS = [
+            { id: 1, name: "Nisan", label: "Nissan" },
+            { id: 2, name: "Iyyar", label: "Iyar" },
+            { id: 3, name: "Sivan", label: "Sivan" },
+            { id: 4, name: "Tamuz", label: "Tamouz" },
+            { id: 5, name: "Av", label: "Av" },
+            { id: 6, name: "Elul", label: "Eloul" },
+            { id: 7, name: "Tishrei", label: "Tichri" },
+            { id: 8, name: "Cheshvan", label: "Hechvan" },
+            { id: 9, name: "Kislev", label: "Kislev" },
+            { id: 10, name: "Tevet", label: "Tevet" },
+            { id: 11, name: "Shvat", label: "Chevat" },
+            { id: 12, name: "Adar", label: "Adar" }, 
+            { id: 12, name: "Adar I", label: "Adar I" }, 
+            { id: 13, name: "Adar II", label: "Adar II" } 
+        ];
+
         // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDl6C8AbOgnPkBhqabE3KJGmnJDQ6snXvs",
@@ -142,23 +164,36 @@
             
             // State Données
             const [children, setChildren] = useState([]);
-            const [completedIds, setCompletedIds] = useState([]); // Pour les enfants
-            const [segulaProgress, setSegulaProgress] = useState({}); // { 1: 5, 2: 13 ... } pour les 5 ségoulot
+            const [completedIds, setCompletedIds] = useState([]); 
+            const [segulaProgress, setSegulaProgress] = useState({});
             
             // State Navigation & UI
-            const [activeTab, setActiveTab] = useState('children'); // 'children', 'all', 'segula'
-            const [view, setView] = useState('list'); // 'list', 'reader', 'settings'
+            const [activeTab, setActiveTab] = useState('children');
+            const [view, setView] = useState('list');
             const [todayHebrew, setTodayHebrew] = useState("");
             
             // State Lecteur
-            const [readerContext, setReaderContext] = useState(null); // { type: 'child'|'chapter'|'segula', id: ..., chapter: 13, data: ... }
+            const [readerContext, setReaderContext] = useState(null); 
             const [psalmText, setPsalmText] = useState(null);
             const [loadingPsalm, setLoadingPsalm] = useState(false);
-            const [scrollToId, setScrollToId] = useState(null); // ID pour le retour automatique
+            const [scrollToId, setScrollToId] = useState(null);
 
             // State Formulaire
             const [editingId, setEditingId] = useState(null);
-            const [formData, setFormData] = useState({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
+            const [formData, setFormData] = useState({ 
+                name: '', 
+                hebrewDate: '', 
+                birthDate: '', 
+                gender: 'girl',
+                imageUrl: '' // Pour stocker l'image en base64
+            });
+            const [dateInputMode, setDateInputMode] = useState('gregorian'); 
+            const [hebrewDateParts, setHebrewDateParts] = useState({
+                day: 1,
+                month: 7, 
+                year: 5785
+            });
+            const fileInputRef = useRef(null);
 
             // --- INIT ---
             useEffect(() => {
@@ -167,13 +202,10 @@
                     setLoadingAuth(false);
                 });
 
-                try {
-                    const date = new Date();
-                    const formatter = new Intl.DateTimeFormat('fr-FR-u-ca-hebrew', {
-                        day: 'numeric', month: 'long', year: 'numeric'
-                    });
-                    setTodayHebrew(formatter.format(date));
-                } catch (e) { setTodayHebrew(""); }
+                const now = new Date();
+                const hNow = new HDate(now);
+                const monthName = HEBREW_MONTHS.find(m => m.name === hNow.getMonthName())?.label || hNow.getMonthName();
+                setTodayHebrew(`${hNow.getDate()} ${monthName} ${hNow.getFullYear()}`);
 
                 return () => unsubscribe();
             }, []);
@@ -182,14 +214,12 @@
             useEffect(() => {
                 if (!user) return;
 
-                // 1. Enfants
                 const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
                 const unsubscribeChildren = onSnapshot(childrenRef, (snapshot) => {
                     const kids = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setChildren(kids);
                 });
 
-                // 2. Statut Enfants (Journalier)
                 const todayStr = new Date().toDateString();
                 const completedRef = doc(db, 'artifacts', appId, 'users', user.uid, 'completed', todayStr);
                 const unsubscribeCompleted = onSnapshot(completedRef, (docSnap) => {
@@ -197,17 +227,15 @@
                     else setCompletedIds([]);
                 });
 
-                // 3. Progression Ségoula 13x13 (Permanent)
                 const segulaRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'segula_progress');
                 const unsubscribeSegula = onSnapshot(segulaRef, (docSnap) => {
                     if (docSnap.exists()) setSegulaProgress(docSnap.data());
-                    else setSegulaProgress({}); // Reset or default
+                    else setSegulaProgress({});
                 });
 
                 return () => { unsubscribeChildren(); unsubscribeCompleted(); unsubscribeSegula(); };
             }, [user]);
 
-            // --- SCROLL AUTOMATIQUE AU RETOUR ---
             useEffect(() => {
                 if (view === 'list' && scrollToId) {
                     setTimeout(() => {
@@ -223,6 +251,31 @@
             }, [view, scrollToId]);
 
             // --- LOGIC ---
+            const calculateChapter = (birthDateString) => {
+                if (!birthDateString) return 1;
+                try {
+                    const birthDate = new Date(birthDateString);
+                    const birthHDate = new HDate(birthDate);
+                    const todayHDate = new HDate();
+                    let age = todayHDate.getFullYear() - birthHDate.getFullYear();
+                    
+                    const monthOrder = { 7:1, 8:2, 9:3, 10:4, 11:5, 12:6, 13:7, 1:8, 2:9, 3:10, 4:11, 5:12, 6:13 };
+                    const mBirth = monthOrder[birthHDate.getMonth()];
+                    const mToday = monthOrder[todayHDate.getMonth()];
+                    
+                    if (mToday < mBirth) { age--; } 
+                    else if (mToday === mBirth) { if (todayHDate.getDate() < birthHDate.getDate()) { age--; } }
+                    return age + 1;
+                } catch (e) {
+                    const birthDate = new Date(birthDateString);
+                    const today = new Date();
+                    let age = today.getFullYear() - birthDate.getFullYear();
+                    const m = today.getMonth() - birthDate.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+                    return age + 1;
+                }
+            };
+
             const handleGoogleLogin = async () => {
                 try {
                     const provider = new GoogleAuthProvider();
@@ -238,15 +291,6 @@
                 }
             };
 
-            const calculateChapter = (birthDateString) => {
-                const birthDate = new Date(birthDateString);
-                const today = new Date();
-                let age = today.getFullYear() - birthDate.getFullYear();
-                const m = today.getMonth() - birthDate.getMonth();
-                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-                return age + 1;
-            };
-
             const cleanText = (text, isHebrew = false) => {
                 if (!text) return "";
                 let cleaned = text.replace(/<[^>]+>/g, '').replace(/&[a-z0-9#]+;/gi, '').replace(/\{[^}]+\}/g, '').replace(/\[[^\]]+\]/g, '').replace(/׀/g, '').trim();
@@ -254,103 +298,73 @@
                 return cleaned;
             };
 
-            // Fonction d'export PDF
-            const handleExportPDF = async () => {
-                if (children.length === 0) {
-                    alert("Aucun enfant dans la liste.");
+            // Image Handler
+            const handleImageChange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (file.size > 5 * 1024 * 1024) {
+                    alert("Image trop grande. Veuillez choisir une image de moins de 5MB.");
                     return;
                 }
-                
-                if (!window.confirm("Cela va générer un document avec les Psaumes en hébreu pour tous les enfants. Continuer ?")) return;
 
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Resize pour icône (max 200x200)
+                        const MAX_SIZE = 200;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                        } else {
+                            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const handleExportPDF = async () => {
+                if (children.length === 0) { alert("Aucun enfant dans la liste."); return; }
+                if (!window.confirm("Générer un PDF avec les Psaumes en hébreu ?")) return;
                 setIsExporting(true);
                 try {
-                    // 1. Identify unique chapters needed
                     const uniqueChapters = [...new Set(children.map(c => calculateChapter(c.birthDate)))];
                     const textsCache = {};
-
-                    // 2. Fetch all needed chapters
                     await Promise.all(uniqueChapters.map(async (chapter) => {
                         try {
                             const res = await fetch(`https://www.sefaria.org/api/texts/Psalms.${chapter}?context=0`);
                             const data = await res.json();
-                            textsCache[chapter] = data.he; // Array of verses
-                        } catch (e) {
-                            console.error("Error fetching chapter " + chapter, e);
-                            textsCache[chapter] = ["(Erreur de chargement du texte)"];
-                        }
+                            textsCache[chapter] = data.he; 
+                        } catch (e) { textsCache[chapter] = ["(Erreur de chargement)"]; }
                     }));
 
-                    // 3. Build HTML
                     const printWindow = window.open('', '_blank');
-                    if (!printWindow) {
-                        alert("Veuillez autoriser les pop-ups pour générer le PDF.");
-                        setIsExporting(false);
-                        return;
-                    }
+                    if (!printWindow) { alert("Autorisez les pop-ups pour le PDF."); setIsExporting(false); return; }
 
-                    let htmlContent = `
-                        <html>
-                        <head>
-                            <title>Tehilim - Export PDF</title>
-                            <style>
-                                @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Hebrew:wght@400;700&display=swap');
-                                body { font-family: 'Noto Serif Hebrew', serif; padding: 40px; direction: rtl; }
-                                .child-block { margin-bottom: 40px; break-inside: avoid; page-break-inside: avoid; border-bottom: 1px dashed #ccc; padding-bottom: 20px; }
-                                .header-info { text-align: center; margin-bottom: 15px; }
-                                .child-name { font-size: 18px; font-weight: bold; color: #333; font-family: sans-serif; direction: ltr; display: inline-block; }
-                                .chapter-title { font-size: 16px; color: #666; margin-top: 5px; }
-                                .hebrew-text { font-size: 24px; line-height: 1.4; text-align: right; }
-                                @media print {
-                                    .no-print { display: none; }
-                                    body { padding: 0; }
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <div style="text-align: center; margin-bottom: 40px;">
-                                <h1 style="font-size: 32px;">קונטרס תהילים</h1>
-                                <p style="font-size: 18px;">Les Tehilim de Maman</p>
-                                <p style="font-size: 14px; color: #888;">${new Date().toLocaleDateString('fr-FR')}</p>
-                            </div>
-                    `;
-
-                    // Sort children by age (youngest first)
+                    let htmlContent = `<html><head><title>Tehilim</title><style>@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Hebrew:wght@400;700&display=swap'); body { font-family: 'Noto Serif Hebrew', serif; padding: 40px; direction: rtl; } .child-block { margin-bottom: 40px; break-inside: avoid; border-bottom: 1px dashed #ccc; padding-bottom: 20px; } .header-info { text-align: center; margin-bottom: 15px; } .child-name { font-size: 18px; font-weight: bold; font-family: sans-serif; direction: ltr; display: inline-block; } .hebrew-text { font-size: 24px; line-height: 1.4; text-align: right; }</style></head><body><div style="text-align: center; margin-bottom: 40px;"><h1 style="font-size: 32px;">קונטרס תהילים</h1><p>Les Tehilim de Maman - ${new Date().toLocaleDateString('fr-FR')}</p></div>`;
                     const sorted = [...children].sort((a,b) => new Date(b.birthDate) - new Date(a.birthDate));
-
                     sorted.forEach(child => {
                         const chapter = calculateChapter(child.birthDate);
                         const verses = textsCache[chapter] || [];
-                        const textBlock = verses.map(v => v.replace(/<[^>]+>/g, '')).join(' ');
-
-                        htmlContent += `
-                            <div class="child-block">
-                                <div class="header-info">
-                                    <div class="child-name">${child.name}</div>
-                                    <div class="chapter-title">Psaume ${chapter}</div>
-                                </div>
-                                <div class="hebrew-text">
-                                    ${textBlock}
-                                </div>
-                            </div>
-                        `;
+                        htmlContent += `<div class="child-block"><div class="header-info"><div class="child-name">${child.name}</div><div>Psaume ${chapter}</div></div><div class="hebrew-text">${verses.map(v => v.replace(/<[^>]+>/g, '')).join(' ')}</div></div>`;
                     });
-
-                    htmlContent += `
-                        <script>
-                            window.onload = function() { window.print(); }
-                        <\/script>
-                        </body></html>
-                    `;
-
-                    printWindow.document.write(htmlContent);
-                    printWindow.document.close();
-
-                } catch (e) {
-                    alert("Erreur lors de la génération : " + e.message);
-                } finally {
-                    setIsExporting(false);
-                }
+                    htmlContent += `<script>window.onload = function() { window.print(); }<\/script></body></html>`;
+                    printWindow.document.write(htmlContent); printWindow.document.close();
+                } catch (e) { alert("Erreur : " + e.message); } finally { setIsExporting(false); }
             };
 
             const openReader = async (context) => {
@@ -359,22 +373,15 @@
                 else if (context.type === 'chapter') domId = `chapter-${context.id}`;
                 else if (context.type === 'segula') domId = `segula-${context.id}`;
                 setScrollToId(domId);
-
                 setReaderContext(context);
                 setView('reader');
                 setLoadingPsalm(true);
                 setPsalmText(null);
-                
                 try {
                     const response = await fetch(`https://www.sefaria.org/api/texts/Psalms.${context.chapter}?context=0`);
                     const data = await response.json();
                     setPsalmText(data);
-                } catch (error) {
-                    console.error("Error fetching Psalm", error);
-                    alert("Erreur de chargement du texte. Vérifiez votre connexion.");
-                } finally {
-                    setLoadingPsalm(false);
-                }
+                } catch (error) { console.error("Error", error); alert("Erreur chargement texte"); } finally { setLoadingPsalm(false); }
             };
 
             const incrementSegula = async (id) => {
@@ -388,13 +395,12 @@
             };
 
             const resetSegula = async (id) => {
-                if (!window.confirm("Voulez-vous remettre ce compteur à zéro ?")) return;
+                if (!window.confirm("Remettre à zéro ?")) return;
                 const segulaRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'segula_progress');
                 setSegulaProgress(prev => ({...prev, [id]: 0}));
                 await setDoc(segulaRef, { [id]: 0 }, { merge: true });
             };
 
-            // Gestion de la lecture et annulation
             const markChildAsDone = async (childId) => {
                 if (!user) return;
                 const todayStr = new Date().toDateString();
@@ -406,7 +412,7 @@
 
             const unmarkChildAsDone = async (childId) => {
                 if (!user) return;
-                if (!window.confirm("Annuler la lecture pour cet enfant ?")) return;
+                if (!window.confirm("Annuler la lecture ?")) return;
                 const todayStr = new Date().toDateString();
                 const completedRef = doc(db, 'artifacts', appId, 'users', user.uid, 'completed', todayStr);
                 const newIds = completedIds.filter(id => id !== childId);
@@ -420,226 +426,135 @@
                 const href = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = href; link.download = `backup_tehillim.json`;
-                document.body.appendChild(link); link.click();
-                document.body.removeChild(link);
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
             };
 
-            // Nouvelle fonction de restauration
             const handleRestoreBackup = async (event) => {
                 const file = event.target.files[0];
-                if (!file) return;
-                if (!user) {
-                    alert("Connectez-vous d'abord.");
-                    return;
-                }
-
+                if (!file || !user) return;
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     try {
                         const data = JSON.parse(e.target.result);
-                        if (!Array.isArray(data)) throw new Error("Format de fichier invalide (doit être une liste)");
-                        
-                        if (!window.confirm(`Restaurer ${data.length} enfants depuis la sauvegarde ? ATTENTION: Cela remplacera votre liste actuelle.`)) return;
-
+                        if (!Array.isArray(data)) throw new Error("Format invalide");
+                        if (!window.confirm(`Restaurer ${data.length} enfants ?`)) return;
                         const batch = writeBatch(db);
                         const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
-                        
-                        // 1. Supprimer l'existant
                         const snapshot = await getDocs(childrenRef);
                         snapshot.forEach(doc => batch.delete(doc.ref));
-
-                        // 2. Ajouter la sauvegarde
-                        data.forEach(child => {
-                            // Nettoyage si des IDs sont présents dans le JSON pour éviter conflits
-                            const { id, ...childData } = child;
-                            const newDocRef = doc(childrenRef);
-                            batch.set(newDocRef, childData);
-                        });
-
-                        await batch.commit();
-                        alert("Restauration réussie !");
-                    } catch (error) {
-                        alert("Erreur lors de la restauration : " + error.message);
-                    }
+                        data.forEach(child => { const { id, ...childData } = child; batch.set(doc(childrenRef), childData); });
+                        await batch.commit(); alert("Restauration réussie !");
+                    } catch (error) { alert("Erreur : " + error.message); }
                 };
                 reader.readAsText(file);
             };
 
             const restoreDefaults = async () => {
-                if (!user || !window.confirm("⚠️ ATTENTION : Cela va EFFACER votre liste actuelle et la remplacer par la nouvelle liste complète. Continuer ?")) return;
+                if (!user || !window.confirm("Cela va écraser la liste. Continuer ?")) return;
                 const batch = writeBatch(db);
                 const childrenRef = collection(db, 'artifacts', appId, 'users', user.uid, 'children');
                 try {
                     const snapshot = await getDocs(childrenRef);
                     snapshot.forEach(doc => batch.delete(doc.ref));
                     INITIAL_DATA.forEach(child => batch.set(doc(childrenRef), child));
-                    await batch.commit();
-                    alert("Liste mise à jour !");
+                    await batch.commit(); alert("Liste restaurée !");
                 } catch (e) { alert("Erreur : " + e.message); }
             };
 
-            // Modification : Fermer et scroller après sauvegarde
             const handleSaveChild = async (e) => {
                 e.preventDefault();
                 if (!user) return;
-                
                 let targetId = editingId;
                 try {
-                    if (editingId) {
-                        await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', editingId), formData);
-                    } else {
-                        const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'children'), formData);
-                        targetId = docRef.id;
-                    }
-                    setEditingId(null); 
-                    setFormData({ name: '', hebrewDate: '', birthDate: '', gender: 'girl' });
-                    
-                    // Retour à la liste et scroll
-                    setView('list');
-                    setScrollToId(`child-${targetId}`);
-                } catch (error) {
-                    console.error(error);
-                    alert("Erreur lors de l'enregistrement");
-                }
+                    if (editingId) await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', editingId), formData);
+                    else { const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'children'), formData); targetId = docRef.id; }
+                    setEditingId(null); setFormData({ name: '', hebrewDate: '', birthDate: '', gender: 'girl', imageUrl: '' });
+                    setView('list'); setScrollToId(`child-${targetId}`);
+                } catch (error) { alert("Erreur sauvegarde: " + error.message); }
             };
 
             const deleteChild = async (id) => {
-                if (window.confirm('Supprimer cet enfant ?')) await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', id));
+                if (window.confirm('Supprimer ?')) await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'children', id));
+            };
+
+            const handleGregorianChange = (e) => {
+                const newDate = e.target.value;
+                setFormData({ ...formData, birthDate: newDate });
+                
+                if (newDate) {
+                    try {
+                        const hDate = new HDate(new Date(newDate));
+                        const monthName = HEBREW_MONTHS.find(m => m.name === hDate.getMonthName())?.label || hDate.getMonthName();
+                        setFormData(prev => ({
+                            ...prev, 
+                            birthDate: newDate,
+                            hebrewDate: `${hDate.getDate()} ${monthName} ${hDate.getFullYear()}`
+                        }));
+                        setHebrewDateParts({
+                            day: hDate.getDate(),
+                            month: hDate.getMonth(), 
+                            year: hDate.getFullYear()
+                        });
+                    } catch (error) { console.error(error); }
+                }
+            };
+
+            const handleHebrewPartsChange = (field, value) => {
+                const newParts = { ...hebrewDateParts, [field]: parseInt(value) };
+                setHebrewDateParts(newParts);
+                
+                try {
+                    const hDate = new HDate(newParts.day, newParts.month, newParts.year);
+                    const gDate = hDate.greg();
+                    const gDateString = gDate.toISOString().split('T')[0];
+                    const monthName = HEBREW_MONTHS.find(m => m.id === newParts.month)?.label || hDate.getMonthName();
+                    
+                    setFormData(prev => ({
+                        ...prev,
+                        birthDate: gDateString,
+                        hebrewDate: `${newParts.day} ${monthName} ${newParts.year}`
+                    }));
+                } catch (error) { console.error("Invalid Hebrew Date", error); }
             };
 
             const startEdit = (child) => {
                 setFormData(child);
                 setEditingId(child.id);
+                if (child.birthDate) {
+                    const hDate = new HDate(new Date(child.birthDate));
+                    setHebrewDateParts({
+                        day: hDate.getDate(),
+                        month: hDate.getMonth(),
+                        year: hDate.getFullYear()
+                    });
+                }
                 setView('settings');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
-            const sortedChildren = [...children].sort((a, b) => 
-                new Date(b.birthDate) - new Date(a.birthDate)
-            );
+            const sortedChildren = [...children].sort((a, b) => new Date(b.birthDate) - new Date(a.birthDate));
 
             // --- RENDER HELPERS ---
-
             if (loadingAuth) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>;
+            if (isExporting) return <div className="min-h-screen flex items-center justify-center bg-black/80 fixed inset-0 z-[100] text-white flex-col gap-4"><Loader2 className="animate-spin" size={48} /><div className="text-center"><p className="text-xl font-bold">Préparation du document...</p></div></div>;
+            if (!user) return <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4"><div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-sm w-full text-center"><h1 className="text-2xl font-bold text-slate-800 font-serif mb-2">אל הנער הזה התפללתי</h1><p className="text-slate-500 mb-8 uppercase tracking-widest text-xs">Les Tehilim de Maman</p><button onClick={handleGoogleLogin} className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow-sm shadow-blue-200"><LogIn size={20} /> Se connecter avec Google</button></div></div>;
 
-            // Overlay de chargement pour l'export
-            if (isExporting) return (
-                <div className="min-h-screen flex items-center justify-center bg-black/80 fixed inset-0 z-[100] text-white flex-col gap-4">
-                    <Loader2 className="animate-spin" size={48} />
-                    <div className="text-center">
-                        <p className="text-xl font-bold">Préparation du document...</p>
-                        <p className="text-sm opacity-75">Téléchargement des textes hébreux</p>
-                    </div>
-                </div>
-            );
-
-            if (!user) return (
-                <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-sm w-full text-center">
-                        <h1 className="text-2xl font-bold text-slate-800 font-serif mb-2">אל הנער הזה התפללתי</h1>
-                        <p className="text-slate-500 mb-8 uppercase tracking-widest text-xs">Les Tehilim de Maman</p>
-                        <button onClick={handleGoogleLogin} className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow-sm shadow-blue-200">
-                            <LogIn size={20} /> Se connecter avec Google
-                        </button>
-                    </div>
-                </div>
-            );
-
-            // --- VUE LECTEUR ---
             if (view === 'reader' && readerContext) {
                 const isSegula = readerContext.type === 'segula';
                 const segulaCount = isSegula ? (segulaProgress[readerContext.id] || 0) : 0;
                 const isSegulaDone = segulaCount >= 13;
-
                 return (
                     <div className="min-h-screen bg-white flex flex-col">
-                        <header className="bg-white border-b sticky top-0 z-20 px-4 py-3 flex items-center justify-between">
-                            <button onClick={() => setView('list')} className="flex items-center gap-1 text-slate-600"><ArrowLeft size={20} /> Retour</button>
-                            <div className="text-center">
-                                <span className="text-xs font-bold text-blue-600 uppercase">Psaume {readerContext.chapter}</span>
-                                <p className="text-sm font-semibold truncate max-w-[200px]">
-                                    {readerContext.type === 'child' ? readerContext.data.name : 
-                                     readerContext.type === 'segula' ? `Ségoula #${readerContext.id}` : 'Lecture Libre'}
-                                </p>
-                            </div>
-                            <div className="w-8"></div>
-                        </header>
-                        <main className="flex-1 p-6 max-w-2xl mx-auto w-full">
-                            {loadingPsalm ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-slate-400" /></div> : psalmText && (
-                                <div className="pb-24">
-                                    <div className="text-right font-serif text-4xl leading-loose text-slate-900 mb-8" dir="rtl">{psalmText.he.map((v, i) => <span key={i}><span className="text-lg text-slate-400 ml-2">({i+1})</span>{cleanText(v, true)} </span>)}</div>
-                                    <div className="h-px bg-slate-100 my-8 mx-10"></div>
-                                    <div className="text-left font-serif text-lg leading-relaxed text-slate-600">{psalmText.text.map((v, i) => <p key={i} className="mb-2"><sup className="text-xs text-slate-400 mr-2">{i+1}</sup>{cleanText(v)}</p>)}</div>
-                                </div>
-                            )}
-                        </main>
-                        
-                        <div className="sticky bottom-0 bg-white border-t p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                            <div className="max-w-md mx-auto">
-                                {readerContext.type === 'child' && (
-                                    <button onClick={() => { markChildAsDone(readerContext.id); setView('list'); }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
-                                        <CheckCircle size={24} /> J'ai terminé
-                                    </button>
-                                )}
-                                {readerContext.type === 'segula' && (
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex-1 text-center">
-                                            <span className="block text-xs text-slate-500 uppercase tracking-wide">Compteur</span>
-                                            <span className={`text-2xl font-bold ${isSegulaDone ? 'text-green-600' : 'text-blue-600'}`}>{segulaCount} / 13</span>
-                                        </div>
-                                        <button 
-                                            onClick={() => incrementSegula(readerContext.id)}
-                                            disabled={isSegulaDone}
-                                            className={`flex-2 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${isSegulaDone ? 'bg-green-100 text-green-700' : 'bg-blue-600 text-white shadow-lg shadow-blue-200'}`}
-                                        >
-                                            {isSegulaDone ? <Check size={20} /> : <Repeat size={20} />}
-                                            {isSegulaDone ? 'Terminé !' : 'J\'ai lu le Psaume'}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        <header className="bg-white border-b sticky top-0 z-20 px-4 py-3 flex items-center justify-between"><button onClick={() => setView('list')} className="flex items-center gap-1 text-slate-600"><ArrowLeft size={20} /> Retour</button><div className="text-center"><span className="text-xs font-bold text-blue-600 uppercase">Psaume {readerContext.chapter}</span><p className="text-sm font-semibold truncate max-w-[200px]">{readerContext.type === 'child' ? readerContext.data.name : readerContext.type === 'segula' ? `Ségoula #${readerContext.id}` : 'Lecture Libre'}</p></div><div className="w-8"></div></header>
+                        <main className="flex-1 p-6 max-w-2xl mx-auto w-full">{loadingPsalm ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-slate-400" /></div> : psalmText && (<div className="pb-24"><div className="text-right font-serif text-4xl leading-loose text-slate-900 mb-8" dir="rtl">{psalmText.he.map((v, i) => <span key={i}><span className="text-lg text-slate-400 ml-2">({i+1})</span>{cleanText(v, true)} </span>)}</div><div className="h-px bg-slate-100 my-8 mx-10"></div><div className="text-left font-serif text-lg leading-relaxed text-slate-600">{psalmText.text.map((v, i) => <p key={i} className="mb-2"><sup className="text-xs text-slate-400 mr-2">{i+1}</sup>{cleanText(v)}</p>)}</div></div>)}</main>
+                        <div className="sticky bottom-0 bg-white border-t p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"><div className="max-w-md mx-auto">{readerContext.type === 'child' && <button onClick={() => { markChildAsDone(readerContext.id); setView('list'); }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"><CheckCircle size={24} /> J'ai terminé</button>}{readerContext.type === 'segula' && <div className="flex items-center gap-3"><div className="flex-1 text-center"><span className="block text-xs text-slate-500 uppercase tracking-wide">Compteur</span><span className={`text-2xl font-bold ${isSegulaDone ? 'text-green-600' : 'text-blue-600'}`}>{segulaCount} / 13</span></div><button onClick={() => incrementSegula(readerContext.id)} disabled={isSegulaDone} className={`flex-2 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${isSegulaDone ? 'bg-green-100 text-green-700' : 'bg-blue-600 text-white shadow-lg shadow-blue-200'}`}>{isSegulaDone ? <Check size={20} /> : <Repeat size={20} />}{isSegulaDone ? 'Terminé !' : 'J\'ai lu le Psaume'}</button></div>}</div></div>
                     </div>
                 );
             }
 
-            // --- VUE PRINCIPALE (Liste) ---
             return (
                 <div className="min-h-screen bg-slate-50 pb-20 font-sans flex flex-col">
-                    <div className="bg-white shadow-sm sticky top-0 z-10">
-                        <div className="bg-slate-50 py-1 px-4 flex justify-between items-center text-[10px] border-b">
-                            <p className="text-slate-500 font-serif font-medium">{todayHebrew}</p>
-                            <div className="flex items-center gap-2">
-                                <span className="flex items-center gap-1 text-green-600 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>{user.email}</span>
-                                <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 transition-colors p-1"><LogOut size={14} /></button>
-                            </div>
-                        </div>
-                        
-                        <div className="px-4 py-3 flex justify-between items-center">
-                            <div>
-                                <h1 className="text-lg font-bold text-slate-800 font-serif">אל הנער הזה התפללתי</h1>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-widest">Les Tehilim de Maman</p>
-                            </div>
-                            <div className="flex gap-2">
-                                {view === 'list' && activeTab === 'children' && <button onClick={handleDownloadBackup} className="p-2 bg-slate-100 rounded-full text-slate-600"><Download size={18} /></button>}
-                                <button onClick={() => setView(view === 'settings' ? 'list' : 'settings')} className="p-2 bg-slate-100 rounded-full text-slate-600">{view === 'settings' ? <X size={18} /> : <Settings size={18} />}</button>
-                            </div>
-                        </div>
-
-                        {view !== 'settings' && (
-                            <div className="flex border-b text-sm font-medium">
-                                <button onClick={() => setActiveTab('children')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'children' ? 'tab-active' : 'tab-inactive'}`}>
-                                    <Users size={16} /> Enfants
-                                </button>
-                                <button onClick={() => setActiveTab('all')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'all' ? 'tab-active' : 'tab-inactive'}`}>
-                                    <Grid size={16} /> Tout
-                                </button>
-                                <button onClick={() => setActiveTab('segula')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'segula' ? 'tab-active' : 'tab-inactive'}`}>
-                                    <Repeat size={16} /> 13 x 13
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    <div className="bg-white shadow-sm sticky top-0 z-10"><div className="bg-slate-50 py-1 px-4 flex justify-between items-center text-[10px] border-b"><p className="text-slate-500 font-serif font-medium">{todayHebrew}</p><div className="flex items-center gap-2"><span className="flex items-center gap-1 text-green-600 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>{user.email}</span><button onClick={handleLogout} className="text-slate-400 hover:text-red-500 transition-colors p-1"><LogOut size={14} /></button></div></div><div className="px-4 py-3 flex justify-between items-center"><div><h1 className="text-lg font-bold text-slate-800 font-serif">אל הנער הזה התפללתי</h1><p className="text-[10px] text-slate-500 uppercase tracking-widest">Les Tehilim de Maman</p></div><div className="flex gap-2">{view === 'list' && activeTab === 'children' && <button onClick={handleDownloadBackup} className="p-2 bg-slate-100 rounded-full text-slate-600"><Download size={18} /></button>}<button onClick={() => setView(view === 'settings' ? 'list' : 'settings')} className="p-2 bg-slate-100 rounded-full text-slate-600">{view === 'settings' ? <X size={18} /> : <Settings size={18} />}</button></div></div>{view !== 'settings' && (<div className="flex border-b text-sm font-medium"><button onClick={() => setActiveTab('children')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'children' ? 'tab-active' : 'tab-inactive'}`}><Users size={16} /> Enfants</button><button onClick={() => setActiveTab('all')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'all' ? 'tab-active' : 'tab-inactive'}`}><Grid size={16} /> Tout</button><button onClick={() => setActiveTab('segula')} className={`flex-1 py-3 text-center flex justify-center items-center gap-2 ${activeTab === 'segula' ? 'tab-active' : 'tab-inactive'}`}><Repeat size={16} /> 13 x 13</button></div>)}</div>
 
                     <main className="flex-1 p-4 max-w-md mx-auto w-full">
                         {view === 'settings' ? (
@@ -647,49 +562,68 @@
                                 <div className="bg-white p-5 rounded-xl border shadow-sm">
                                     <h2 className="font-bold flex items-center gap-2 mb-4 text-slate-800">{editingId ? <Edit2 size={18} /> : <Plus size={18} />} {editingId ? 'Modifier' : 'Ajouter un enfant'}</h2>
                                     <form onSubmit={handleSaveChild} className="space-y-4">
-                                        <input required className="w-full p-3 bg-slate-50 border rounded-lg text-sm" placeholder="Nom complet" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <input required className="w-full p-3 bg-slate-50 border rounded-lg text-sm" placeholder="Date Hébraïque" value={formData.hebrewDate} onChange={e => setFormData({...formData, hebrewDate: e.target.value})} />
-                                            <select className="w-full p-3 bg-slate-50 border rounded-lg text-sm" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}><option value="girl">Fille ❤️</option><option value="boy">Garçon 💙</option></select>
+                                        <div className="flex flex-col items-center gap-2 mb-2">
+                                            <div className="w-20 h-20 rounded-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden relative cursor-pointer hover:border-blue-400 transition-colors" onClick={() => fileInputRef.current.click()}>
+                                                {formData.imageUrl ? <img src={formData.imageUrl} className="w-full h-full object-cover" /> : <Camera size={24} className="text-slate-400" />}
+                                            </div>
+                                            <button type="button" onClick={() => fileInputRef.current.click()} className="text-xs text-blue-600 font-medium">Ajouter une photo</button>
+                                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
+                                            {formData.imageUrl && <button type="button" onClick={() => setFormData({...formData, imageUrl: ''})} className="text-xs text-red-500">Supprimer</button>}
                                         </div>
-                                        <input required type="date" className="w-full p-3 bg-slate-50 border rounded-lg text-sm" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
-                                        <div className="flex gap-2">
-                                            {editingId && <button type="button" onClick={() => {setEditingId(null); setFormData({name:'',hebrewDate:'',birthDate:'',gender:'girl'})}} className="flex-1 py-3 border rounded-lg text-slate-600 font-medium">Annuler</button>}
+
+                                        <input required className="w-full p-3 bg-slate-50 border rounded-lg text-sm" placeholder="Nom complet" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                        <select className="w-full p-3 bg-slate-50 border rounded-lg text-sm" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}><option value="girl">Fille ❤️</option><option value="boy">Garçon 💙</option></select>
+                                        
+                                        <div className="bg-slate-50 rounded-lg p-1 flex text-sm">
+                                            <button type="button" onClick={() => setDateInputMode('gregorian')} className={`flex-1 py-2 rounded-md transition-all ${dateInputMode === 'gregorian' ? 'bg-white shadow-sm text-blue-600 font-bold' : 'text-slate-500'}`}>Date Civile</button>
+                                            <button type="button" onClick={() => setDateInputMode('hebrew')} className={`flex-1 py-2 rounded-md transition-all ${dateInputMode === 'hebrew' ? 'bg-white shadow-sm text-blue-600 font-bold' : 'text-slate-500'}`}>Date Hébraïque</button>
+                                        </div>
+
+                                        {dateInputMode === 'gregorian' ? (
+                                            <div className="space-y-2">
+                                                <label className="text-xs text-slate-500 font-bold uppercase">Date de naissance</label>
+                                                <input required type="date" className="w-full p-3 bg-white border rounded-lg text-sm" value={formData.birthDate} onChange={handleGregorianChange} />
+                                                <div className="text-xs text-slate-400 italic">Correspondance hébraïque : {formData.hebrewDate || '...'}</div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <label className="text-xs text-slate-500 font-bold uppercase">Date Hébraïque</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <select className="p-3 bg-white border rounded-lg text-sm" value={hebrewDateParts.day} onChange={e => handleHebrewPartsChange('day', e.target.value)}>
+                                                        {Array.from({length: 30}, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
+                                                    </select>
+                                                    <select className="p-3 bg-white border rounded-lg text-sm" value={hebrewDateParts.month} onChange={e => handleHebrewPartsChange('month', e.target.value)}>
+                                                        {HEBREW_MONTHS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                                                    </select>
+                                                    <select className="p-3 bg-white border rounded-lg text-sm" value={hebrewDateParts.year} onChange={e => handleHebrewPartsChange('year', e.target.value)}>
+                                                        {Array.from({length: 100}, (_, i) => new HDate().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="text-xs text-slate-400 italic">Correspondance civile : {formData.birthDate || '...'}</div>
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-2 mt-4">
+                                            {editingId && <button type="button" onClick={() => {setEditingId(null); setFormData({name:'',hebrewDate:'',birthDate:'',gender:'girl', imageUrl: ''})}} className="flex-1 py-3 border rounded-lg text-slate-600 font-medium">Annuler</button>}
                                             <button type="submit" className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold shadow-md shadow-blue-100 flex items-center justify-center gap-2"><Save size={18} /> {editingId ? 'Mettre à jour' : 'Enregistrer'}</button>
                                         </div>
                                     </form>
                                 </div>
                                 <div className="bg-white p-5 rounded-xl border shadow-sm space-y-4">
                                     <h2 className="font-bold text-slate-800 flex items-center gap-2"><Settings size={18} /> Administration</h2>
-                                    
                                     <div className="grid grid-cols-1 gap-3">
-                                        <button onClick={handleExportPDF} className="w-full py-3 bg-slate-800 text-white text-sm font-bold border rounded-xl flex items-center justify-center gap-2 shadow-sm">
-                                            <Printer size={16} /> Générer un PDF (Hébreu)
-                                        </button>
-
+                                        <button onClick={handleExportPDF} className="w-full py-3 bg-slate-800 text-white text-sm font-bold border rounded-xl flex items-center justify-center gap-2 shadow-sm"><Printer size={16} /> Générer un PDF (Hébreu)</button>
                                         <div className="h-px bg-slate-100 my-2"></div>
-
-                                        <button type="button" onClick={restoreDefaults} className="w-full py-3 bg-red-50 text-red-600 text-sm font-bold border border-red-100 rounded-xl flex items-center justify-center gap-2">
-                                            <RefreshCw size={16} /> Réinitialiser avec la nouvelle liste complète
-                                        </button>
-                                        
-                                        <div className="pt-2">
-                                            <input type="file" id="backup-upload" className="hidden" accept=".json" onChange={handleRestoreBackup} />
-                                            <button onClick={() => document.getElementById('backup-upload').click()} className="w-full py-3 bg-slate-100 text-slate-600 text-sm font-bold border rounded-xl flex items-center justify-center gap-2">
-                                                <Upload size={16} /> Restaurer depuis une sauvegarde
-                                            </button>
-                                        </div>
+                                        <button type="button" onClick={restoreDefaults} className="w-full py-3 bg-red-50 text-red-600 text-sm font-bold border border-red-100 rounded-xl flex items-center justify-center gap-2"><RefreshCw size={16} /> Réinitialiser avec la nouvelle liste complète</button>
+                                        <div className="pt-2"><input type="file" id="backup-upload" className="hidden" accept=".json" onChange={handleRestoreBackup} /><button onClick={() => document.getElementById('backup-upload').click()} className="w-full py-3 bg-slate-100 text-slate-600 text-sm font-bold border rounded-xl flex items-center justify-center gap-2"><Upload size={16} /> Restaurer depuis une sauvegarde</button></div>
                                     </div>
                                 </div>
                             </div>
                         ) : (
                             <>
-                                {/* --- ONGLET ENFANTS --- */}
                                 {activeTab === 'children' && (
                                     <div className="space-y-4">
-                                        <div className="text-center text-xs font-bold text-green-600 flex items-center justify-center gap-1 mb-2">
-                                            <CheckCircle size={10} /> {completedIds.length} / {children.length} Terminés aujourd'hui
-                                        </div>
+                                        <div className="text-center text-xs font-bold text-green-600 flex items-center justify-center gap-1 mb-2"><CheckCircle size={10} /> {completedIds.length} / {children.length} Terminés aujourd'hui</div>
                                         {children.sort((a,b) => new Date(b.birthDate) - new Date(a.birthDate)).map(child => {
                                             const chapter = calculateChapter(child.birthDate);
                                             const isDone = completedIds.includes(child.id);
@@ -699,90 +633,39 @@
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex-1 pr-2">
                                                             <div className="text-xs text-slate-400 mb-1 flex items-center gap-1 uppercase font-semibold tracking-wider">
-                                                                <Heart size={14} className={child.gender === 'boy' ? 'text-blue-500 fill-blue-500' : 'text-pink-500 fill-pink-500'} /> 
+                                                                {child.imageUrl ? (
+                                                                    <div className="w-5 h-5 rounded-full overflow-hidden inline-block align-middle mr-1 border border-slate-200">
+                                                                        <img src={child.imageUrl} alt="" className="w-full h-full object-cover" />
+                                                                    </div>
+                                                                ) : (
+                                                                    <Heart size={14} className={`inline align-middle mr-1 ${child.gender === 'boy' ? 'text-blue-500 fill-blue-500' : 'text-pink-500 fill-pink-500'}`} />
+                                                                )}
                                                                 {child.hebrewDate}
                                                             </div>
                                                             <h2 className={`text-lg font-bold leading-tight ${isDone ? 'text-green-800' : 'text-slate-800'}`}>{child.name}</h2>
                                                         </div>
-                                                        <div className={`flex flex-col items-center justify-center p-2 rounded-xl border min-w-[60px] ${isDone ? 'bg-green-100 border-green-200' : 'bg-slate-50 border-slate-100'}`}>
-                                                            <span className="text-[10px] text-slate-400">Psaume</span>
-                                                            <span className="text-2xl font-bold">{chapter}</span>
-                                                        </div>
+                                                        <div className={`flex flex-col items-center justify-center p-2 rounded-xl border min-w-[60px] ${isDone ? 'bg-green-100 border-green-200' : 'bg-slate-50 border-slate-100'}`}><span className="text-[10px] text-slate-400">Psaume</span><span className="text-2xl font-bold">{chapter}</span></div>
                                                     </div>
                                                     <div className="flex gap-2 mt-4">
                                                         <div className="flex-1 flex gap-2">
-                                                            <button onClick={() => openReader({ type: 'child', id: child.id, chapter, data: child })} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${isDone ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-                                                                {isDone ? <RefreshCw size={14} /> : <BookOpen size={14} />} {isDone ? 'Relire' : 'Lire'}
-                                                            </button>
-                                                            {isDone && (
-                                                                <button onClick={() => unmarkChildAsDone(child.id)} className="px-3 bg-red-50 text-red-500 rounded-lg border border-red-100 hover:bg-red-100" title="Annuler (marquer comme non lu)">
-                                                                    <Undo size={16} />
-                                                                </button>
-                                                            )}
+                                                            <button onClick={() => openReader({ type: 'child', id: child.id, chapter, data: child })} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${isDone ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>{isDone ? <RefreshCw size={14} /> : <BookOpen size={14} />} {isDone ? 'Relire' : 'Lire'}</button>
+                                                            {isDone && <button onClick={() => unmarkChildAsDone(child.id)} className="px-3 bg-red-50 text-red-500 rounded-lg border border-red-100 hover:bg-red-100" title="Annuler (marquer comme non lu)"><Undo size={16} /></button>}
                                                         </div>
-                                                        <div className="flex gap-1">
-                                                            <button onClick={() => startEdit(child)} className="p-2 bg-white border rounded-lg text-slate-400 hover:text-blue-600"><Edit2 size={16} /></button>
-                                                            <button onClick={() => deleteChild(child.id)} className="p-2 bg-white border rounded-lg text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
-                                                        </div>
+                                                        <div className="flex gap-1"><button onClick={() => startEdit(child)} className="p-2 bg-white border rounded-lg text-slate-400 hover:text-blue-600"><Edit2 size={16} /></button><button onClick={() => deleteChild(child.id)} className="p-2 bg-white border rounded-lg text-slate-400 hover:text-red-500"><Trash2 size={16} /></button></div>
                                                     </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 )}
-
-                                {/* --- ONGLET TOUT TEHILLIM --- */}
-                                {activeTab === 'all' && (
-                                    <div className="grid grid-cols-5 gap-2">
-                                        {Array.from({ length: 150 }, (_, i) => i + 1).map(num => (
-                                            <button 
-                                                id={`chapter-${num}`}
-                                                key={num}
-                                                onClick={() => openReader({ type: 'chapter', id: num, chapter: num })}
-                                                className="aspect-square bg-white border border-slate-200 rounded-xl flex items-center justify-center font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-colors shadow-sm"
-                                            >
-                                                {num}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* --- ONGLET 13 x 13 --- */}
+                                {activeTab === 'all' && (<div className="grid grid-cols-5 gap-2">{Array.from({ length: 150 }, (_, i) => i + 1).map(num => (<button id={`chapter-${num}`} key={num} onClick={() => openReader({ type: 'chapter', id: num, chapter: num })} className="aspect-square bg-white border border-slate-200 rounded-xl flex items-center justify-center font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-colors shadow-sm">{num}</button>))}</div>)}
                                 {activeTab === 'segula' && (
                                     <div className="space-y-3">
-                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4 text-center">
-                                            <h3 className="font-bold text-blue-800 text-lg">Ségoula du Psaume 13</h3>
-                                            <p className="text-sm text-blue-600">Dire 13 fois le Psaume 13</p>
-                                        </div>
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4 text-center"><h3 className="font-bold text-blue-800 text-lg">Ségoula du Psaume 13</h3><p className="text-sm text-blue-600">Dire 13 fois le Psaume 13</p></div>
                                         {[1, 2, 3, 4, 5].map(id => {
                                             const count = segulaProgress[id] || 0;
                                             const isDone = count >= 13;
-                                            return (
-                                                <div id={`segula-${id}`} key={id} className={`bg-white border rounded-xl p-4 flex items-center justify-between shadow-sm ${isDone ? 'border-green-200 bg-green-50' : 'border-slate-100'}`}>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                                                            {isDone ? <Check size={20} /> : `#${id}`}
-                                                        </div>
-                                                        <div>
-                                                            <h4 className={`font-bold ${isDone ? 'text-green-800' : 'text-slate-800'}`}>Ségoula #{id}</h4>
-                                                            <div className="text-xs font-medium text-slate-500 mt-1">
-                                                                Progression : <span className={isDone ? 'text-green-600' : 'text-blue-600'}>{count} / 13</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <button 
-                                                            onClick={() => openReader({ type: 'segula', id: id, chapter: 13 })}
-                                                            className={`px-4 py-2 rounded-lg text-sm font-bold ${isDone ? 'bg-white text-green-700 border border-green-200' : 'bg-blue-600 text-white shadow-md shadow-blue-100'}`}
-                                                        >
-                                                            {isDone ? 'Voir' : 'Commencer'}
-                                                        </button>
-                                                        {count > 0 && !isDone && (
-                                                            <button onClick={() => resetSegula(id)} className="p-2 text-slate-300 hover:text-red-400" title="Réinitialiser"><RefreshCw size={16} /></button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
+                                            return (<div id={`segula-${id}`} key={id} className={`bg-white border rounded-xl p-4 flex items-center justify-between shadow-sm ${isDone ? 'border-green-200 bg-green-50' : 'border-slate-100'}`}><div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isDone ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-600'}`}>{isDone ? <Check size={20} /> : `#${id}`}</div><div><h4 className={`font-bold ${isDone ? 'text-green-800' : 'text-slate-800'}`}>Ségoula #{id}</h4><div className="text-xs font-medium text-slate-500 mt-1">Progression : <span className={isDone ? 'text-green-600' : 'text-blue-600'}>{count} / 13</span></div></div></div><div className="flex items-center gap-2"><button onClick={() => openReader({ type: 'segula', id: id, chapter: 13 })} className={`px-4 py-2 rounded-lg text-sm font-bold ${isDone ? 'bg-white text-green-700 border border-green-200' : 'bg-blue-600 text-white shadow-md shadow-blue-100'}`}>{isDone ? 'Voir' : 'Commencer'}</button>{count > 0 && !isDone && (<button onClick={() => resetSegula(id)} className="p-2 text-slate-300 hover:text-red-400" title="Réinitialiser"><RefreshCw size={16} /></button>)}</div></div>);
                                         })}
                                     </div>
                                 )}
