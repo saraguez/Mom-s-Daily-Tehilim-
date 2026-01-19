@@ -305,11 +305,8 @@
                 const file = e.target.files[0];
                 if (!file) return;
 
-                if (file.size > 5 * 1024 * 1024) {
-                    alert("Image trop grande. Veuillez choisir une image de moins de 5MB.");
-                    return;
-                }
-
+                // SUPPRESSION DE LA VERIFICATION DE TAILLE (automatique via canvas)
+                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
@@ -331,7 +328,8 @@
                         canvas.width = width;
                         canvas.height = height;
                         ctx.drawImage(img, 0, 0, width, height);
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        // Compression JPEG à 70% pour réduire drastiquement la taille du fichier
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                         setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
                     };
                     img.src = event.target.result;
@@ -642,7 +640,7 @@
                                                             </div>
                                                             <h2 className={`text-lg font-bold leading-tight ${isDone ? 'text-green-800' : 'text-slate-800'}`}>{child.name}</h2>
                                                         </div>
-                                                        <div className="flex items-center gap-3"> {/* Container Droite Modifié */}
+                                                        <div className="flex items-center gap-2"> {/* Container Droite */}
                                                             {child.imageUrl && (
                                                                 <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 shadow-sm">
                                                                     <img src={child.imageUrl} className="w-full h-full object-cover" />
