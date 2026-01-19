@@ -228,7 +228,6 @@
                 });
 
                 // 3. Progression Ségoula 13x13 (Journalier)
-                // MODIFICATION : Utilisation d'une collection journalière
                 const segulaRef = doc(db, 'artifacts', appId, 'users', user.uid, 'segula_daily', todayStr);
                 const unsubscribeSegula = onSnapshot(segulaRef, (docSnap) => {
                     if (docSnap.exists()) setSegulaProgress(docSnap.data());
@@ -305,8 +304,6 @@
                 const file = e.target.files[0];
                 if (!file) return;
 
-                // SUPPRESSION DE LA VERIFICATION DE TAILLE (automatique via canvas)
-                
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
@@ -314,7 +311,6 @@
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
                         
-                        // Resize pour icône (max 200x200)
                         const MAX_SIZE = 200;
                         let width = img.width;
                         let height = img.height;
@@ -328,7 +324,6 @@
                         canvas.width = width;
                         canvas.height = height;
                         ctx.drawImage(img, 0, 0, width, height);
-                        // Compression JPEG à 70% pour réduire drastiquement la taille du fichier
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                         setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
                     };
@@ -545,10 +540,25 @@
                 const isSegula = readerContext.type === 'segula';
                 const segulaCount = isSegula ? (segulaProgress[readerContext.id] || 0) : 0;
                 const isSegulaDone = segulaCount >= 13;
+                const childImage = readerContext.type === 'child' ? readerContext.data.imageUrl : null;
+
                 return (
                     <div className="min-h-screen bg-white flex flex-col">
                         <header className="bg-white border-b sticky top-0 z-20 px-4 py-3 flex items-center justify-between"><button onClick={() => setView('list')} className="flex items-center gap-1 text-slate-600"><ArrowLeft size={20} /> Retour</button><div className="text-center"><span className="text-xs font-bold text-blue-600 uppercase">Psaume {readerContext.chapter}</span><p className="text-sm font-semibold truncate max-w-[200px]">{readerContext.type === 'child' ? readerContext.data.name : readerContext.type === 'segula' ? `Ségoula #${readerContext.id}` : 'Lecture Libre'}</p></div><div className="w-8"></div></header>
-                        <main className="flex-1 p-6 max-w-2xl mx-auto w-full">{loadingPsalm ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-slate-400" /></div> : psalmText && (<div className="pb-24"><div className="text-right font-serif text-4xl leading-loose text-slate-900 mb-8" dir="rtl">{psalmText.he.map((v, i) => <span key={i}><span className="text-lg text-slate-400 ml-2">({i+1})</span>{cleanText(v, true)} </span>)}</div><div className="h-px bg-slate-100 my-8 mx-10"></div><div className="text-left font-serif text-lg leading-relaxed text-slate-600">{psalmText.text.map((v, i) => <p key={i} className="mb-2"><sup className="text-xs text-slate-400 mr-2">{i+1}</sup>{cleanText(v)}</p>)}</div></div>)}</main>
+                        <main className="flex-1 p-6 max-w-2xl mx-auto w-full">
+                            {/* PHOTO EN HAUT DE PAGE */}
+                            {childImage && (
+                                <div className="flex flex-col items-center justify-center mb-8">
+                                    <div className="w-40 h-40 rounded-full border-4 border-slate-100 shadow-md overflow-hidden mb-3">
+                                        <img src={childImage} className="w-full h-full object-cover" alt="Child" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-slate-800 text-center">{readerContext.data.name}</h2>
+                                    <p className="text-slate-500 text-lg">{readerContext.data.hebrewDate}</p>
+                                </div>
+                            )}
+
+                            {loadingPsalm ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-slate-400" /></div> : psalmText && (<div className="pb-24"><div className="text-right font-serif text-4xl leading-loose text-slate-900 mb-8" dir="rtl">{psalmText.he.map((v, i) => <span key={i}><span className="text-lg text-slate-400 ml-2">({i+1})</span>{cleanText(v, true)} </span>)}</div><div className="h-px bg-slate-100 my-8 mx-10"></div><div className="text-left font-serif text-lg leading-relaxed text-slate-600">{psalmText.text.map((v, i) => <p key={i} className="mb-2"><sup className="text-xs text-slate-400 mr-2">{i+1}</sup>{cleanText(v)}</p>)}</div></div>)}
+                        </main>
                         <div className="sticky bottom-0 bg-white border-t p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"><div className="max-w-md mx-auto">{readerContext.type === 'child' && <button onClick={() => { markChildAsDone(readerContext.id); setView('list'); }} className="w-full bg-green-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"><CheckCircle size={24} /> J'ai terminé</button>}{readerContext.type === 'segula' && <div className="flex items-center gap-3"><div className="flex-1 text-center"><span className="block text-xs text-slate-500 uppercase tracking-wide">Compteur</span><span className={`text-2xl font-bold ${isSegulaDone ? 'text-green-600' : 'text-blue-600'}`}>{segulaCount} / 13</span></div><button onClick={() => incrementSegula(readerContext.id)} disabled={isSegulaDone} className={`flex-2 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${isSegulaDone ? 'bg-green-100 text-green-700' : 'bg-blue-600 text-white shadow-lg shadow-blue-200'}`}>{isSegulaDone ? <Check size={20} /> : <Repeat size={20} />}{isSegulaDone ? 'Terminé !' : 'J\'ai lu le Psaume'}</button></div>}</div></div>
                     </div>
                 );
@@ -640,7 +650,7 @@
                                                             </div>
                                                             <h2 className={`text-lg font-bold leading-tight ${isDone ? 'text-green-800' : 'text-slate-800'}`}>{child.name}</h2>
                                                         </div>
-                                                        <div className="flex items-center gap-2"> {/* Container Droite */}
+                                                        <div className="flex items-center gap-3"> {/* Container Droite Modifié */}
                                                             {child.imageUrl && (
                                                                 <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 shadow-sm">
                                                                     <img src={child.imageUrl} className="w-full h-full object-cover" />
